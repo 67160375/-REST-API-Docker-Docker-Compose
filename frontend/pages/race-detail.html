@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>รายละเอียดการแข่งขัน | Grid Pass</title>
+  <link rel="stylesheet" href="../css/style.css" />
+</head>
+<body>
+  <main class="page-container">
+    <div class="step-track">
+      <span class="step done">1. ค้นหารายการแข่ง</span>
+      <span class="step active">2. ดูรายละเอียด</span>
+      <span class="step">3. เลือกโซน</span>
+      <span class="step">4. กรอกข้อมูล</span>
+      <span class="step">5. ชำระเงิน</span>
+      <span class="step">6. รับ e-Ticket</span>
+    </div>
+
+    <a href="races.html" class="btn-back">← กลับไปหน้ารายการแข่งขัน</a>
+
+    <div id="detail-content">
+      <div class="skeleton">กำลังโหลดรายละเอียด...</div>
+    </div>
+  </main>
+
+  <script src="../js/common.js"></script>
+  <script src="../js/api.js"></script>
+  <script src="../js/race-detail.js"></script>
+</body>
+</html>

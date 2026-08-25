@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบสมาชิก - Grid Pass</title>
+    <style>
+        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #f4f6f9; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
+        .auth-card { background: white; width: 100%; max-width: 450px; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        .auth-header { text-align: center; margin-bottom: 25px; }
+        .auth-header h1 { color: #d32f2f; margin: 0 0 10px 0; font-size: 24px; }
+        .tabs { display: flex; border-bottom: 2px solid #eee; margin-bottom: 20px; }
+        .tab-btn { flex: 1; padding: 10px; background: none; border: none; font-weight: bold; color: #666; cursor: pointer; border-bottom: 2px solid transparent; }
+        .tab-btn.active { color: #d32f2f; border-bottom-color: #d32f2f; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; color: #333; font-size: 14px; }
+        .form-group input { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; }
+        .btn { width: 100%; padding: 12px; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .btn-primary { background-color: #d32f2f; color: white; }
+        .btn-primary:hover { background-color: #b71c1c; }
+        .btn-secondary { background-color: #6c757d; color: white; margin-top: 10px; }
+        .alert { padding: 10px; border-radius: 6px; margin-bottom: 15px; display: none; font-size: 14px; text-align: center; }
+        .alert-success { background-color: #d4edda; color: #155724; }
+        .alert-error { background-color: #f8d7da; color: #721c24; }
+        .nav-home { text-align: center; margin-top: 15px; }
+        .nav-home a { color: #007bff; text-decoration: none; font-size: 14px; }
+    </style>
+</head>
+<body>
+
+<div class="auth-card">
+    <div class="auth-header">
+        <h1>🏎️ Grid Pass</h1>
+        <p style="color: #666; margin: 0; font-size: 14px;">ระบบจัดการบัญชีผู้ใช้งาน</p>
+    </div>
+
+    <div id="alertBox" class="alert"></div>
+
+    <!-- ส่วนที่ 1: แสดงเมื่อ "ยังไม่ได้ล็อกอิน" (Guest Area) -->
+    <div id="guestArea">
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('login')">เข้าสู่ระบบ</button>
+            <button class="tab-btn" onclick="switchTab('register')">สมัครสมาชิก</button>
+            <button class="tab-btn" onclick="switchTab('password')">เปลี่ยนรหัสผ่าน</button>
+        </div>
+
+        <form id="loginForm" onsubmit="handleLogin(event)">
+            <div class="form-group">
+                <label>Username (ชื่อผู้ใช้)</label>
+                <input type="text" id="loginUsername" required placeholder="กรอกชื่อผู้ใช้">
+            </div>
+            <div class="form-group">
+                <label>Password (รหัสผ่าน)</label>
+                <input type="password" id="loginPassword" required placeholder="กรอกรหัสผ่าน">
+            </div>
+            <button type="submit" class="btn btn-primary">เข้าสู่ระบบ</button>
+        </form>
+
+        <form id="registerForm" style="display: none;" onsubmit="handleRegister(event)">
+            <div class="form-group">
+                <label>Username (ตั้งชื่อผู้ใช้)</label>
+                <input type="text" id="regUsername" required placeholder="ตั้งชื่อผู้ใช้">
+            </div>
+            <div class="form-group">
+                <label>Email (อีเมล)</label>
+                <input type="email" id="regEmail" required placeholder="example@email.com">
+            </div>
+            <div class="form-group">
+                <label>Password (ตั้งรหัสผ่าน)</label>
+                <input type="password" id="regPassword" required placeholder="ตั้งรหัสผ่าน">
+            </div>
+            <button type="submit" class="btn btn-primary">สมัครสมาชิก</button>
+        </form>
+
+        <form id="passwordForm" style="display: none;" onsubmit="handleChangePassword(event)">
+            <div class="form-group">
+                <label>Username (ชื่อผู้ใช้)</label>
+                <input type="text" id="passUsername" required placeholder="ชื่อผู้ใช้">
+            </div>
+            <div class="form-group">
+                <label>รหัสผ่านเดิม</label>
+                <input type="password" id="oldPassword" required placeholder="กรอกรหัสผ่านเดิม">
+            </div>
+            <div class="form-group">
+                <label>รหัสผ่านใหม่</label>
+                <input type="password" id="newPassword" required placeholder="ตั้งรหัสผ่านใหม่">
+            </div>
+            <button type="submit" class="btn btn-primary">ยืนยันเปลี่ยนรหัสผ่าน</button>
+        </form>
+    </div>
+
+    <!-- ส่วนที่ 2: แสดงเมื่อ "ล็อกอินแล้ว" เท่านั้น (Logged In Area) -->
+    <div id="loggedInArea" style="display: none; text-align: center;">
+        <h2 style="color: #d32f2f;">✅ เข้าสู่ระบบแล้ว</h2>
+        <p>ยินดีต้อนรับคุณ <strong id="showUsername" style="font-size: 18px;"></strong></p>
+        <button class="btn btn-secondary" onclick="handleLogout()" style="width: 100%; margin-top: 20px;">ออกจากระบบ</button>
+    </div>
+
+    <div class="nav-home">
+        <a href="/">← กลับไปหน้าหลักของเว็บ</a>
+    </div>
+</div>
+
+<script>
+    // เช็คสถานะตอนเปิดหน้าเว็บมาว่าล็อกอินอยู่ไหม
+    window.onload = function() {
+        const token = localStorage.getItem('token');
+        const userStr = localStorage.getItem('user');
+        
+        if (token && userStr) {
+            // ล็อกอินแล้ว -> ซ่อนฟอร์มทั้งหมด โชว์ปุ่มออกจากระบบ
+            document.getElementById('guestArea').style.display = 'none';
+            document.getElementById('loggedInArea').style.display = 'block';
+            
+            const user = JSON.parse(userStr);
+            document.getElementById('showUsername').innerText = user.username;
+        } else {
+            // ยังไม่ล็อกอิน -> โชว์ฟอร์ม ซ่อนปุ่มออกจากระบบ
+            document.getElementById('guestArea').style.display = 'block';
+            document.getElementById('loggedInArea').style.display = 'none';
+        }
+    };
+
+    function showAlert(message, isSuccess = true) {
+        const box = document.getElementById('alertBox');
+        box.className = `alert ${isSuccess ? 'alert-success' : 'alert-error'}`;
+        box.innerText = message;
+        box.style.display = 'block';
+    }
+
+    function switchTab(tab) {
+        document.getElementById('loginForm').style.display = tab === 'login' ? 'block' : 'none';
+        document.getElementById('registerForm').style.display = tab === 'register' ? 'block' : 'none';
+        document.getElementById('passwordForm').style.display = tab === 'password' ? 'block' : 'none';
+        
+        const btns = document.querySelectorAll('.tab-btn');
+        btns[0].classList.toggle('active', tab === 'login');
+        btns[1].classList.toggle('active', tab === 'register');
+        btns[2].classList.toggle('active', tab === 'password');
+        document.getElementById('alertBox').style.display = 'none';
+    }
+
+    async function handleLogin(e) {
+        e.preventDefault();
+        const username = document.getElementById('loginUsername').value;
+        const password = document.getElementById('loginPassword').value;
+
+        const res = await fetch('/api/v1/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password })
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+            localStorage.setItem('token', data.access_token);
+            localStorage.setItem('user', JSON.stringify(data.user));
+            showAlert('เข้าสู่ระบบสำเร็จ! กำลังพาไปหน้าหลัก...');
+            setTimeout(() => { window.location.href = '/'; }, 1000);
+        } else {
+            showAlert(data.detail || 'เข้าสู่ระบบไม่สำเร็จ', false);
+        }
+    }
+
+    async function handleRegister(e) {
+        e.preventDefault();
+        const username = document.getElementById('regUsername').value;
+        const email = document.getElementById('regEmail').value;
+        const password = document.getElementById('regPassword').value;
+
+        const res = await fetch('/api/v1/auth/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, email, password })
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+            showAlert(data.message + ' กรุณาล็อกอิน');
+            document.getElementById('regUsername').value = '';
+            document.getElementById('regEmail').value = '';
+            document.getElementById('regPassword').value = '';
+            setTimeout(() => switchTab('login'), 1500);
+        } else {
+            showAlert(data.detail || 'สมัครสมาชิกไม่สำเร็จ', false);
+        }
+    }
+
+    async function handleChangePassword(e) {
+        e.preventDefault();
+        const username = document.getElementById('passUsername').value;
+        const old_password = document.getElementById('oldPassword').value;
+        const new_password = document.getElementById('newPassword').value;
+
+        const res = await fetch('/api/v1/auth/change-password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, old_password, new_password })
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+            showAlert(data.message);
+            document.getElementById('passUsername').value = '';
+            document.getElementById('oldPassword').value = '';
+            document.getElementById('newPassword').value = '';
+            setTimeout(() => switchTab('login'), 1500);
+        } else {
+            showAlert(data.detail || 'เปลี่ยนรหัสผ่านไม่สำเร็จ', false);
+        }
+    }
+
+    async function handleLogout() {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.location.reload(); // โหลดหน้าใหม่เพื่อให้ฟอร์มล็อกอินเด้งกลับมา
+    }
+</script>
+
+</body>
+</html>

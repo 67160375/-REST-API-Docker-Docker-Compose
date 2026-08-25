@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <title>เข้าสู่ระบบ - Grid Pass</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+    <div style="max-width: 400px; margin: 50px auto; padding: 20px; border: 1px solid #ccc; border-radius: 8px;">
+        <h2>เข้าสู่ระบบ (Login)</h2>
+        <form id="loginForm">
+            <div style="margin-bottom: 15px;">
+                <label>Username / Email:</label><br>
+                <input type="text" id="username" required style="width: 100%; padding: 8px;">
+            </div>
+            <div style="margin-bottom: 15px;">
+                <label>Password:</label><br>
+                <input type="password" id="password" required style="width: 100%; padding: 8px;">
+            </div>
+            <button type="submit" style="width: 100%; padding: 10px; background: #007bff; color: white; border: none; border-radius: 4px;">เข้าสู่ระบบ</button>
+        </form>
+        <p id="message" style="margin-top: 15px; color: green;"></p>
+    </div>
+
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            // ยิงข้อมูลไปที่ Backend API ที่เราสร้างไว้
+            const response = await fetch('/api/v1/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password })
+            });
+
+            const data = await response.json();
+            if (response.ok) {
+                document.getElementById('message').innerText = "เข้าสู่ระบบสำเร็จ! Token: " + data.access_token;
+            } else {
+                document.getElementById('message').innerText = "เข้าสู่ระบบไม่สำเร็จ";
+            }
+        });
+    </script>
+</body>
+</html>

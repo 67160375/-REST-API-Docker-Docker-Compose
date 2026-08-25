@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>เลือกโซนที่นั่ง | Grid Pass</title>
+  <link rel="stylesheet" href="../css/style.css" />
+</head>
+<body>
+  <main class="page-container">
+    <div class="step-track">
+      <span class="step done">1. ค้นหารายการแข่ง</span>
+      <span class="step done">2. ดูรายละเอียด</span>
+      <span class="step active">3. เลือกโซน</span>
+      <span class="step">4. กรอกข้อมูล</span>
+      <span class="step">5. ชำระเงิน</span>
+      <span class="step">6. รับ e-Ticket</span>
+    </div>
+
+    <a href="#" id="back-link" class="btn-back">← กลับไปหน้ารายละเอียด</a>
+
+    <h1 class="page-title">เลือกโซน & จำนวนตั๋ว</h1>
+    <p class="page-subtitle">แสดงผังโซน ตั๋วคงเหลือแบบ real-time พร้อมคำนวณราคารวม</p>
+
+    <div id="zone-list" class="zone-list">
+      <div class="skeleton">กำลังโหลดโซนที่นั่ง...</div>
+    </div>
+
+    <div id="qty-section" style="display:none;">
+      <div class="qty-control">
+        <span style="font-weight:700;">จำนวนตั๋ว</span>
+        <button id="qty-minus">−</button>
+        <span class="qty-value" id="qty-value">1</span>
+        <button id="qty-plus">+</button>
+      </div>
+
+      <div class="summary-box">
+        <div class="row"><span>โซนที่เลือก</span><span id="summary-zone">-</span></div>
+        <div class="row"><span>ราคาต่อใบ</span><span id="summary-price">-</span></div>
+        <div class="total-row"><span>ราคารวม</span><span id="summary-total">-</span></div>
+      </div>
+    </div>
+
+    <div id="error-box"></div>
+
+    <button class="btn btn-primary btn-block" id="confirm-zone-btn" disabled>ล็อกที่นั่งชั่วคราว →</button>
+  </main>
+
+  <script src="../js/common.js"></script>
+  <script src="../js/api.js"></script>
+  <script src="../js/select-zone.js"></script>
+</body>
+</html>

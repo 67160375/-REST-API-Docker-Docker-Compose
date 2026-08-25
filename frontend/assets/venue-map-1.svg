@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="400" viewBox="0 0 800 400">
+  <rect width="800" height="400" fill="#faf7f2"/>
+  <path d="M100 300 C 150 100, 350 100, 400 200 S 650 300, 700 150" stroke="#ff5a1f" stroke-width="14" fill="none" stroke-linecap="round"/>
+  <path d="M100 300 C 150 100, 350 100, 400 200 S 650 300, 700 150" stroke="#ffffff" stroke-width="3" fill="none" stroke-dasharray="10,10" stroke-linecap="round"/>
+  <circle cx="100" cy="300" r="10" fill="#1c1c1c"/>
+  <text x="100" y="330" font-family="sans-serif" font-size="18" fill="#1c1c1c" text-anchor="middle">Start/Finish</text>
+  <rect x="0" y="0" width="800" height="400" fill="none" stroke="#ececec" stroke-width="4"/>
+  <text x="400" y="40" font-family="sans-serif" font-size="22" font-weight="bold" fill="#1c1c1c" text-anchor="middle">ผังสนามแข่ง (ตัวอย่าง)</text>
+</svg>
