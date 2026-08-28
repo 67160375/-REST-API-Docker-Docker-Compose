@@ -7,8 +7,12 @@ const searchInput = document.getElementById("search-input");
 const searchBtn = document.getElementById("search-btn");
 
 function renderRaceCards(races) {
-  if (!races.length) {
-    raceGrid.innerHTML = `<div class="empty-state">ไม่พบรายการแข่งขันที่ตรงกับคำค้นหา</div>`;
+  if (!races || !races.length) {
+    const emptyMsg = typeof t === "function" && t("no_races_found") !== "no_races_found"
+      ? t("no_races_found")
+      : (getCurrentLang() === "en" ? "No races found matching your search." : "ไม่พบรายการแข่งขันที่ตรงกับคำค้นหา");
+
+    raceGrid.innerHTML = `<div class="empty-state" style="text-align: center; color: #888; padding: 40px 0;">${emptyMsg}</div>`;
     return;
   }
 
@@ -22,7 +26,7 @@ function renderRaceCards(races) {
           <h3>${race.name}</h3>
           <div class="meta">📅 ${race.race_date}</div>
           <div class="meta">📍 ${race.venue}</div>
-          <div class="price">เริ่มต้น ${formatPrice(race.price_from)}</div>
+          <div class="price">${t("from_price")} ${formatPrice(race.price_from || race.price || 0)}</div>
         </div>
       </a>
     `
@@ -31,7 +35,12 @@ function renderRaceCards(races) {
 }
 
 async function loadRaces(keyword) {
-  raceGrid.innerHTML = `<div class="skeleton">กำลังโหลดรายการแข่งขัน...</div>`;
+  const loadingMsg = typeof t === "function" && t("loading_races") !== "loading_races"
+    ? t("loading_races")
+    : (getCurrentLang() === "en" ? "Loading races..." : "กำลังโหลดรายการแข่งขัน...");
+
+  raceGrid.innerHTML = `<div class="skeleton">${loadingMsg}</div>`;
+  
   try {
     const races = await RaceAPI.listRaces(keyword);
     renderRaceCards(races);
@@ -40,9 +49,14 @@ async function loadRaces(keyword) {
   }
 }
 
-searchBtn.addEventListener("click", () => loadRaces(searchInput.value));
-searchInput.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") loadRaces(searchInput.value);
-});
+if (searchBtn) {
+  searchBtn.addEventListener("click", () => loadRaces(searchInput.value));
+}
+
+if (searchInput) {
+  searchInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") loadRaces(searchInput.value);
+  });
+}
 
 loadRaces();

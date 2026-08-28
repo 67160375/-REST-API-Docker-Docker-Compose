@@ -7,7 +7,7 @@ schemas.py
 """
 
 from typing import Optional, List
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 
 
 # ---------- Race ----------
@@ -45,6 +45,32 @@ class ZoneOut(BaseModel):
     price: int
     available_seats: int
     total_seats: int
+
+    # 🆕 Stand Crowd Status — คำนวณอัตโนมัติจาก available_seats / total_seats
+    # ไม่ต้องแก้ crud.py หรือ races.py เลย เพราะ Pydantic คำนวณให้ตอน validate response
+    crowd_level: Optional[str] = None   # "low" | "medium" | "full"
+    crowd_label: Optional[str] = None   # ข้อความภาษาไทยสำหรับแสดงผล เช่น "ว่างเยอะ"
+
+    @model_validator(mode="after")
+    def compute_crowd_status(self):
+        """
+        เกณฑ์การแบ่งสถานะความหนาแน่นของ Stand:
+          - ที่นั่งเหลือ = 0 (จองไม่ได้แล้วจริงๆ)  -> เต็ม
+          - เหลือ < 50% ของทั้งหมด (แต่ยังจองได้)   -> ใกล้เต็ม
+          - เหลือ >= 50%                          -> ว่างเยอะ
+        """
+        ratio = (self.available_seats / self.total_seats) if self.total_seats > 0 else 0
+
+        if self.available_seats <= 0:
+            self.crowd_level = "full"
+            self.crowd_label = "เต็ม"
+        elif ratio < 0.5:
+            self.crowd_level = "medium"
+            self.crowd_label = "ใกล้เต็ม"
+        else:
+            self.crowd_level = "low"
+            self.crowd_label = "ว่างเยอะ"
+        return self
 
 
 # ---------- Booking ----------

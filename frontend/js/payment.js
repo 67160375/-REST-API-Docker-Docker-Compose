@@ -41,6 +41,12 @@ function renderPayment(booking) {
 
 confirmBtn.addEventListener("click", async () => {
   if (!currentBooking) return;
+
+  // 🔒 ดักเช็ค Auth อีกครั้งก่อนกดส่งชำระเงิน (ส่งไป auth.html สวยๆ)
+  if (typeof requireAuth === "function" && !requireAuth("/pages/auth.html")) {
+    return;
+  }
+
   confirmBtn.disabled = true;
   confirmBtn.textContent = "กำลังประมวลผลการชำระเงิน...";
   errorBox.innerHTML = "";
@@ -56,11 +62,18 @@ confirmBtn.addEventListener("click", async () => {
 });
 
 async function loadBooking() {
+  // 🔒 เช็ค Auth ทันทีเมื่อเปิดเข้ามาที่หน้านี้ (ส่งไป auth.html สวยๆ)
+  if (typeof requireAuth === "function" && !requireAuth("/pages/auth.html")) {
+    if (confirmBtn) confirmBtn.disabled = true;
+    return;
+  }
+
   if (!bookingId) {
     showError(paymentContent, "ไม่พบข้อมูลการจอง กรุณาเริ่มใหม่จากหน้ารายการแข่งขัน");
     confirmBtn.disabled = true;
     return;
   }
+
   try {
     currentBooking = await BookingAPI.get(bookingId);
     renderPayment(currentBooking);

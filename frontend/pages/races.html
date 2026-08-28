@@ -3,28 +3,37 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ค้นหารายการแข่งขัน | Grid Pass</title>
+  <title>Grid Pass — Races</title>
   <link rel="stylesheet" href="../css/style.css" />
 </head>
 <body>
   <main class="page-container">
+    <!-- Stepper แสดงขั้นตอน -->
     <div class="step-track">
-      <span class="step active">1. ค้นหารายการแข่ง</span>
-      <span class="step">2. ดูรายละเอียด</span>
-      <span class="step">3. เลือกโซน</span>
-      <span class="step">4. กรอกข้อมูล</span>
-      <span class="step">5. ชำระเงิน</span>
-      <span class="step">6. รับ e-Ticket</span>
+      <span class="step active" data-i18n="step1">1. ค้นหารายการแข่ง</span>
+      <span class="step" data-i18n="step2">2. ดูรายละเอียด</span>
+      <span class="step" data-i18n="step3">3. เลือกโซน</span>
+      <span class="step" data-i18n="step4">4. กรอกข้อมูล</span>
+      <span class="step" data-i18n="step5">5. ชำระเงิน</span>
+      <span class="step" data-i18n="step6">6. รับ e-Ticket</span>
     </div>
 
-    <h1 class="page-title">ค้นหารายการแข่งขัน</h1>
-    <p class="page-subtitle">เลือกดูรายการแข่งรถที่สนใจ วันที่จัด สถานที่สนาม และราคาเริ่มต้น</p>
+    <!-- หัวข้อและข้อความอธิบาย -->
+    <h1 class="page-title" data-i18n="search_title">ค้นหารายการแข่งขัน</h1>
+    <p class="page-subtitle" data-i18n="search_sub">เลือกดูรายการแข่งรถที่สนใจ วันที่จัด สถานที่สนาม และราคาเริ่มต้น</p>
 
+    <!-- ช่องค้นหา -->
     <div class="search-bar">
-      <input type="text" id="search-input" placeholder="ค้นหา เช่น Thailand Super Series, มอเตอร์ไซค์..." />
-      <button class="btn btn-primary" id="search-btn">ค้นหา</button>
+      <input 
+        type="text" 
+        id="search-input" 
+        data-i18n-placeholder="search_placeholder" 
+        placeholder="ค้นหา เช่น Thailand Super Series, มอเตอร์ไซค์..." 
+      />
+      <button class="btn btn-primary" id="search-btn" data-i18n="search_btn">ค้นหา</button>
     </div>
 
+    <!-- รายการการ์ดแข่งขัน -->
     <div id="race-grid" class="race-grid">
       <div class="skeleton">กำลังโหลดรายการแข่งขัน...</div>
     </div>

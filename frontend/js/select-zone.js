@@ -13,22 +13,40 @@ const errorBox = document.getElementById("error-box");
 const backLink = document.getElementById("back-link");
 
 const raceId = getQueryParam("id");
-backLink.href = `race-detail.html?id=${raceId}`;
+if (backLink && raceId) {
+  backLink.href = `race-detail.html?id=${raceId}`;
+}
 
 let zones = [];
 let selectedZone = null;
 let quantity = 1;
 
 function renderZones() {
+  if (!zoneListEl) return;
+
   zoneListEl.innerHTML = zones
     .map((zone) => {
       const soldOut = zone.available_seats <= 0;
       const isSelected = selectedZone && selectedZone.id === zone.id;
+
+      // 🌐 แปลภาษาจำนวนที่นั่งคงเหลือ
+      const seatsText = soldOut
+        ? t("sold_out")
+        : t("available_seats", { n: zone.available_seats });
+
+      // 🆕 Stand Crowd Status badge — ใช้ crowd_level / crowd_label จาก backend โดยตรง
+      const crowdLevel = zone.crowd_level || "low";
+      const crowdLabel = zone.crowd_label || "";
+      const crowdBadge = crowdLabel
+        ? `<span class="crowd-badge crowd-${crowdLevel}"><span class="crowd-dot"></span>${crowdLabel}</span>`
+        : "";
+
       return `
         <div class="zone-card ${isSelected ? "selected" : ""} ${soldOut ? "disabled" : ""}" data-zone-id="${zone.id}">
           <div>
             <div class="zone-name">${zone.name}</div>
-            <div class="zone-seats">${soldOut ? "ตั๋วหมดแล้ว" : `เหลือ ${zone.available_seats} ที่นั่ง`}</div>
+            <div class="zone-seats">${seatsText}</div>
+            ${crowdBadge}
           </div>
           <div class="zone-price">${formatPrice(zone.price)}</div>
         </div>
@@ -49,54 +67,77 @@ function renderZones() {
 
 function updateSummary() {
   if (!selectedZone) {
-    qtySection.style.display = "none";
-    confirmBtn.disabled = true;
+    if (qtySection) qtySection.style.display = "none";
+    if (confirmBtn) confirmBtn.disabled = true;
     return;
   }
 
-  // จำกัดจำนวนตั๋วไม่ให้เกินที่นั่งคงเหลือ (edge case: ที่นั่งเหลือน้อยกว่าที่กำลังจะเลือก)
   const maxQty = Math.min(selectedZone.available_seats, 10);
   if (quantity > maxQty) quantity = maxQty;
   if (quantity < 1) quantity = 1;
 
-  qtySection.style.display = "block";
-  qtyValueEl.textContent = quantity;
-  summaryZoneEl.textContent = selectedZone.name;
-  summaryPriceEl.textContent = formatPrice(selectedZone.price);
-  summaryTotalEl.textContent = formatPrice(selectedZone.price * quantity);
-  confirmBtn.disabled = false;
+  if (qtySection) qtySection.style.display = "block";
+  if (qtyValueEl) qtyValueEl.textContent = quantity;
+  if (summaryZoneEl) summaryZoneEl.textContent = selectedZone.name;
+  if (summaryPriceEl) summaryPriceEl.textContent = formatPrice(selectedZone.price);
+  if (summaryTotalEl) summaryTotalEl.textContent = formatPrice(selectedZone.price * quantity);
+  if (confirmBtn) confirmBtn.disabled = false;
 }
 
-document.getElementById("qty-minus").addEventListener("click", () => {
-  quantity -= 1;
-  updateSummary();
-});
+// ➕➖ ปุ่มเพิ่ม/ลด จำนวนตั๋ว
+const qtyMinusBtn = document.getElementById("qty-minus");
+if (qtyMinusBtn) {
+  qtyMinusBtn.addEventListener("click", () => {
+    if (quantity > 1) {
+      quantity -= 1;
+      updateSummary();
+    }
+  });
+}
 
-document.getElementById("qty-plus").addEventListener("click", () => {
-  quantity += 1;
-  updateSummary();
-});
+const qtyPlusBtn = document.getElementById("qty-plus");
+if (qtyPlusBtn) {
+  qtyPlusBtn.addEventListener("click", () => {
+    quantity += 1;
+    updateSummary();
+  });
+}
 
-confirmBtn.addEventListener("click", async () => {
-  if (!selectedZone) return;
-  confirmBtn.disabled = true;
-  confirmBtn.textContent = "กำลังล็อกที่นั่ง...";
-  errorBox.innerHTML = "";
+// 🔘 ปุ่มกดจองตั๋ว
+if (confirmBtn) {
+  confirmBtn.addEventListener("click", async () => {
+    if (!selectedZone) {
+      const alertMsg = getCurrentLang() === "en" ? "Please select a zone first." : "กรุณาเลือกโซนที่นั่งก่อนครับ";
+      alert(alertMsg);
+      return;
+    }
 
-  try {
-    const booking = await BookingAPI.create(Number(raceId), selectedZone.id, quantity);
-    saveState({ raceId: Number(raceId), bookingId: booking.id });
-    window.location.href = `checkout.html?booking_id=${booking.id}`;
-  } catch (err) {
-    showError(errorBox, err.message);
-    confirmBtn.disabled = false;
-    confirmBtn.textContent = "ล็อกที่นั่งชั่วคราว →";
-  }
-});
+    if (!requireAuth()) return;
+
+    confirmBtn.disabled = true;
+    confirmBtn.textContent = t("locking_seats");
+    if (errorBox) errorBox.innerHTML = "";
+
+    try {
+      const booking = await BookingAPI.create(Number(raceId), selectedZone.id, quantity);
+      saveState({
+        raceId: Number(raceId),
+        bookingId: booking.id,
+        zone: selectedZone,
+        quantity: quantity
+      });
+      window.location.href = `checkout.html?booking_id=${booking.id}`;
+    } catch (err) {
+      showError(errorBox || zoneListEl, err.message);
+      confirmBtn.disabled = false;
+      confirmBtn.textContent = t("confirm_zone_btn");
+    }
+  });
+}
 
 async function loadZones() {
   if (!raceId) {
-    showError(zoneListEl, "ไม่พบรหัสรายการแข่งขัน กรุณากลับไปเลือกใหม่");
+    showError(zoneListEl, t("err_no_race_id"));
     return;
   }
   try {

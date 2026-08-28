@@ -17,7 +17,7 @@ from sqlmodel import SQLModel
 
 from app.database import engine
 from app import models
-from app.routers import races, bookings, auth, users
+from app.routers import races, bookings, auth, users, dev
 
 app = FastAPI(
     title="Grid Pass API",
@@ -45,6 +45,7 @@ app.include_router(races.router)
 app.include_router(bookings.router)
 app.include_router(auth.router)
 app.include_router(users.router)
+app.include_router(dev.router)
 
 
 @app.get("/api/health")

@@ -10,10 +10,14 @@ session ในสัปดาห์ที่ 2 (ดู database.py + models.py) 
 """
 
 from typing import Optional
+import copy
 import itertools
 
 # ---------------------------------------------------------------
 # Mock data: รายการแข่งขัน
+# หมายเหตุ: "price_from" ที่พิมพ์ไว้ตรงนี้เป็นแค่ค่าเริ่มต้น/placeholder เท่านั้น
+# ตัวเลขจริงที่ส่งออกไปให้ frontend จะถูกคำนวณใหม่เสมอจากราคาต่ำสุดใน ZONES
+# (ดูฟังก์ชัน get_price_from ด้านล่าง) เพื่อไม่ให้ราคาไม่ตรงกันอีก
 # ---------------------------------------------------------------
 RACES = [
     {
@@ -71,15 +75,15 @@ RACES = [
 # Mock data: โซนที่นั่งต่อรายการแข่งขัน
 # ---------------------------------------------------------------
 ZONES = [
-    {"id": 1, "race_id": 1, "name": "Grandstand", "price": 1500, "total_seats": 200, "available_seats": 42},
-    {"id": 2, "race_id": 1, "name": "Side Stand", "price": 800, "total_seats": 300, "available_seats": 150},
-    {"id": 3, "race_id": 1, "name": "VIP", "price": 3500, "total_seats": 50, "available_seats": 6},
-    {"id": 4, "race_id": 2, "name": "Grandstand", "price": 1200, "total_seats": 200, "available_seats": 88},
-    {"id": 5, "race_id": 2, "name": "Side Stand", "price": 600, "total_seats": 300, "available_seats": 210},
-    {"id": 6, "race_id": 2, "name": "VIP", "price": 3000, "total_seats": 40, "available_seats": 0},
-    {"id": 7, "race_id": 3, "name": "Grandstand", "price": 1800, "total_seats": 200, "available_seats": 120},
-    {"id": 8, "race_id": 3, "name": "Side Stand", "price": 900, "total_seats": 300, "available_seats": 260},
-    {"id": 9, "race_id": 3, "name": "VIP", "price": 4000, "total_seats": 30, "available_seats": 15},
+    {"id": 1, "race_id": 1, "name": "Side Stand", "price": 500, "total_seats": 200, "available_seats": 42},
+    {"id": 2, "race_id": 1, "name": "Grandstand", "price": 1500, "total_seats": 300, "available_seats": 150},
+    {"id": 3, "race_id": 1, "name": "VIP", "price": 3500, "total_seats": 50, "available_seats": 20},
+    {"id": 4, "race_id": 2, "name": "Side Stand", "price": 400, "total_seats": 200, "available_seats": 88},
+    {"id": 5, "race_id": 2, "name": "Grandstand", "price": 1200, "total_seats": 300, "available_seats": 210},
+    {"id": 6, "race_id": 2, "name": "VIP", "price": 3000, "total_seats": 40, "available_seats": 20},
+    {"id": 7, "race_id": 3, "name": "Side Stand", "price": 600, "total_seats": 200, "available_seats": 120},
+    {"id": 8, "race_id": 3, "name": "Grandstand", "price": 1800, "total_seats": 300, "available_seats": 260},
+    {"id": 9, "race_id": 3, "name": "VIP", "price": 4000, "total_seats": 30, "available_seats": 20},
 ]
 
 # ---------------------------------------------------------------
@@ -90,16 +94,45 @@ BOOKINGS: dict[int, dict] = {}
 TICKETS: dict[int, dict] = {}
 _booking_id_counter = itertools.count(1)
 
+# เก็บค่าตั้งต้นของ ZONES ไว้ตอนโปรแกรมเริ่มทำงาน ใช้ตอนกด "รีเซ็ต" (ดู reset_all_data ด้านล่าง)
+_ZONES_SEED = copy.deepcopy(ZONES)
+
+
+# ---------------------------------------------------------------
+# 🆕 ราคาเริ่มต้น: คำนวณจากราคาต่ำสุดในโซนของ race นั้นเสมอ
+# ไม่ใช้ค่า "price_from" ที่พิมพ์ไว้ตรงๆ ใน RACES อีกต่อไป กัน "ราคาเริ่มต้น" กับ
+# "ราคาโซนจริง" ไม่ตรงกันเวลามีคนแก้ราคาโซนแล้วลืมไปแก้ RACES
+# ---------------------------------------------------------------
+def get_price_from(race_id: int):
+    zone_prices = [z["price"] for z in ZONES if z["race_id"] == race_id]
+    return min(zone_prices) if zone_prices else None
+
 
 def list_races(keyword: Optional[str] = None):
-    if not keyword:
-        return RACES
-    keyword = keyword.strip().lower()
-    return [r for r in RACES if keyword in r["name"].lower() or keyword in r["category"].lower()]
+    races = RACES
+    if keyword:
+        keyword = keyword.strip().lower()
+        races = [r for r in RACES if keyword in r["name"].lower() or keyword in r["category"].lower()]
+
+    result = []
+    for r in races:
+        race_copy = dict(r)
+        computed_price = get_price_from(r["id"])
+        if computed_price is not None:
+            race_copy["price_from"] = computed_price
+        result.append(race_copy)
+    return result
 
 
 def get_race(race_id: int):
-    return next((r for r in RACES if r["id"] == race_id), None)
+    race = next((r for r in RACES if r["id"] == race_id), None)
+    if not race:
+        return None
+    race_copy = dict(race)
+    computed_price = get_price_from(race_id)
+    if computed_price is not None:
+        race_copy["price_from"] = computed_price
+    return race_copy
 
 
 def list_zones(race_id: int):
@@ -168,3 +201,15 @@ def confirm_payment(booking_id: int, payment_method: str):
 
 def get_ticket(booking_id: int):
     return TICKETS.get(booking_id)
+
+
+# ---------------------------------------------------------------
+# 🆕 รีเซ็ตข้อมูล (ใช้ตอนทดสอบเท่านั้น) -- เรียกผ่าน POST /api/dev/reset
+# ---------------------------------------------------------------
+def reset_all_data():
+    """รีเซ็ตที่นั่งคงเหลือกลับเป็นค่าตั้งต้น + ล้างการจอง/ตั๋วทั้งหมด"""
+    for zone in ZONES:
+        seed = next(z for z in _ZONES_SEED if z["id"] == zone["id"])
+        zone["available_seats"] = seed["available_seats"]
+    BOOKINGS.clear()
+    TICKETS.clear()

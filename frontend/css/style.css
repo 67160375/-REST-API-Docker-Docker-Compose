@@ -581,3 +581,47 @@ footer.site-footer {
   color: var(--color-text-muted);
   font-size: 0.85rem;
 }
+
+/* ---------- 🆕 Stand Crowd Status badge ---------- */
+
+.crowd-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.crowd-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.crowd-low {
+  background: rgba(139, 195, 74, 0.15);
+  color: #4b7314;
+}
+.crowd-low .crowd-dot {
+  background: var(--color-accent-green);
+}
+
+.crowd-medium {
+  background: rgba(255, 204, 0, 0.18);
+  color: #8a6a00;
+}
+.crowd-medium .crowd-dot {
+  background: var(--color-accent-yellow);
+}
+
+.crowd-full {
+  background: rgba(230, 57, 70, 0.12);
+  color: #b23a12;
+}
+.crowd-full .crowd-dot {
+  background: #e63946;
+}

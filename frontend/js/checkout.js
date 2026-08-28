@@ -19,6 +19,12 @@ document.querySelectorAll(".payment-option").forEach((el) => {
 });
 
 async function loadSummary() {
+  // 🔒 เช็ค Auth ทันทีเมื่อโหลดหน้า checkout
+  if (typeof requireAuth === "function" && !requireAuth("/pages/auth.html")) {
+    if (submitBtn) submitBtn.disabled = true;
+    return;
+  }
+
   if (!bookingId) {
     showError(summaryPanel, "ไม่พบข้อมูลการจอง กรุณาเริ่มใหม่จากหน้ารายการแข่งขัน");
     submitBtn.disabled = true;
@@ -43,6 +49,12 @@ async function loadSummary() {
 
 checkoutForm.addEventListener("submit", async (e) => {
   e.preventDefault();
+
+  // 🔒 ดักเช็ค Auth อีกครั้งก่อนส่งฟอร์ม
+  if (typeof requireAuth === "function" && !requireAuth("/pages/auth.html")) {
+    return;
+  }
+
   errorBox.innerHTML = "";
 
   const buyerName = document.getElementById("buyer-name").value.trim();
