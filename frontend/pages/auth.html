@@ -35,7 +35,7 @@
         }
 
         /* 🆕 ขอบไล่สีเรืองแสงวิ่งรอบการ์ด (เหมือนขอบ RGB ของเมาส์เกมมิ่ง) */
-        .auth-card::before {
+.auth-card::before {
             content: '';
             position: absolute;
             inset: -3px;
@@ -44,6 +44,7 @@
             background: linear-gradient(120deg, #ff5a1f, #d32f2f, #ffcc00, #d32f2f, #ff5a1f);
             background-size: 300% 300%;
             -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0); /* 👈 เพิ่มบรรทัดนี้ */
             -webkit-mask-composite: xor;
             mask-composite: exclude;
             opacity: 0.85;
