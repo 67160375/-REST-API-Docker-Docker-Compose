@@ -21,6 +21,7 @@ from sqlmodel import Session, SQLModel
 from app import crud, models
 from app.database import engine
 from app.routers import auth, bookings, dev, races, users
+from app.seed import seed_if_empty
 
 
 # ฟังก์ชัน Background Job คืนตั๋วหลุดจองที่หมดอายุ (ทำงานทุก 1 นาที)
@@ -40,6 +41,7 @@ scheduler.add_job(auto_release_expired_bookings, "interval", minutes=1)
 async def lifespan(app: FastAPI):
     # Startup: สร้างตารางใน PostgreSQL และเริ่มรัน Background Job
     SQLModel.metadata.create_all(engine)
+    seed_if_empty()
     scheduler.start()
     print("[System] Database tables verified & APScheduler started.")
     

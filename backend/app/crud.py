@@ -6,7 +6,7 @@ crud.py
 และระบบคืนที่นั่งอัตโนมัติเมื่อตั๋วหมดอายุ
 """
 
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from typing import List, Optional
 from sqlmodel import Session, col, delete, select
 
@@ -47,21 +47,18 @@ def create_booking(db: Session, race_id: int, zone_id: int, quantity: int) -> Op
     สร้างรายการจองแบบ Transactional Safety:
     ใช้ with_for_update() เพื่อล็อกแถวของ Zone ไม่ให้ถูกตัดที่นั่งพร้อมกัน (Race Condition)
     """
-    # 1. ดึงข้อมูล Zone พร้อมสั่ง Lock แถวใน DB
     statement = select(Zone).where(Zone.id == zone_id).with_for_update()
     zone = db.exec(statement).first()
 
-    if not zone or zone.available_seats < quantity:
+    if quantity < 1 or quantity > 10 or not zone or zone.race_id != race_id or zone.available_seats < quantity:
         return None
 
-    # 2. ตัดจำนวนที่นั่ง
     zone.available_seats -= quantity
     db.add(zone)
 
-    # 3. ตั้งเวลาหมดอายุ 10 นาทีสำหรับการจองแบบ pending
-    expires_at = datetime.now(timezone.utc) + timedelta(minutes=10)
+    # ใช้ UTC naive datetime เพื่อให้สอดคล้องกับ created_at และ PostgreSQL TIMESTAMP WITHOUT TIME ZONE
+    expires_at = datetime.utcnow() + timedelta(minutes=10)
 
-    # 4. สร้าง Booking
     booking = Booking(
         race_id=race_id,
         zone_id=zone_id,
@@ -103,12 +100,10 @@ def confirm_payment(db: Session, booking_id: int, payment_method: str) -> Option
     if not booking or booking.status in ["cancelled", "expired", "paid"]:
         return None
 
-    # อัปเดตสถานะ Booking เป็น paid
     booking.payment_method = payment_method
     booking.status = "paid"
     db.add(booking)
 
-    # สร้าง e-Ticket
     ticket_code = f"TIX-{booking.id:06d}"
     ticket = Ticket(
         booking_id=booking.id,
@@ -135,7 +130,6 @@ def cancel_booking(db: Session, booking_id: int) -> bool:
     if not booking or booking.status in ["cancelled", "paid"]:
         return False
 
-    # คืนที่นั่งเข้า Zone
     zone = db.exec(select(Zone).where(Zone.id == booking.zone_id).with_for_update()).first()
     if zone:
         zone.available_seats += booking.quantity
@@ -152,12 +146,13 @@ def cancel_booking(db: Session, booking_id: int) -> bool:
 # ---------------------------------------------------------------
 def release_expired_bookings(db: Session) -> int:
     """คืนที่นั่งของการจองที่หมดเวลาแล้ว (APScheduler รันทุก 1 นาที)"""
-    now = datetime.now(timezone.utc)
+    now = datetime.utcnow()
     statement = (
         select(Booking)
         .where(
-            Booking.status.in_(["pending", "awaiting_payment"]),
-            Booking.expires_at < now
+            col(Booking.status).in_(["pending", "awaiting_payment"]),
+            col(Booking.expires_at) != None,  # noqa: E711
+            col(Booking.expires_at) < now,
         )
         .with_for_update()
     )
@@ -169,7 +164,7 @@ def release_expired_bookings(db: Session) -> int:
         if zone:
             zone.available_seats += booking.quantity
             db.add(zone)
-        
+
         booking.status = "expired"
         db.add(booking)
         released_count += 1
@@ -184,8 +179,7 @@ def reset_all_data(db: Session):
     """รีเซ็ตข้อมูลการจองทั้งหมดใน DB (ใช้ตอน Dev/Test)"""
     db.exec(delete(Ticket))
     db.exec(delete(Booking))
-    
-    # รีเซ็ตที่นั่ง Zone กลับเป็น total_seats
+
     zones = db.exec(select(Zone)).all()
     for z in zones:
         z.available_seats = z.total_seats

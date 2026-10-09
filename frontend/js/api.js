@@ -1,16 +1,17 @@
 /* ==========================================================
    api.js
    ฟังก์ชันกลางสำหรับเรียก FastAPI backend ด้วย fetch()
-   ทุกหน้าเรียกใช้ไฟล์นี้ ไม่ต้องเขียน fetch() ซ้ำในแต่ละหน้า
+   แนบ JWT (Authorization: Bearer ...) ให้อัตโนมัติถ้าล็อกอินอยู่
    ========================================================== */
 
 const API_BASE = ""; // ใช้ path สัมพัทธ์ เพราะ frontend ถูก serve จาก FastAPI ตัวเดียวกัน
 
 async function apiRequest(path, options = {}) {
-  const res = await fetch(`${API_BASE}${path}`, {
-    headers: { "Content-Type": "application/json" },
-    ...options,
-  });
+  const headers = { "Content-Type": "application/json", ...(options.headers || {}) };
+  const token = localStorage.getItem("token");
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+
+  const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
 
   if (!res.ok) {
     let detail = `เกิดข้อผิดพลาด (HTTP ${res.status})`;
@@ -20,7 +21,14 @@ async function apiRequest(path, options = {}) {
     } catch (e) {
       /* ไม่มี JSON body ก็ใช้ข้อความ default ไป */
     }
-    throw new Error(detail);
+    if (res.status === 401) {
+      // token หมดอายุ/ไม่ถูกต้อง -> ล้างสถานะล็อกอินเก่า
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+    }
+    const err = new Error(detail);
+    err.status = res.status;
+    throw err;
   }
 
   return res.json();

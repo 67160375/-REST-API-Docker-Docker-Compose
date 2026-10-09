@@ -169,7 +169,6 @@
         <div class="tabs">
             <button class="tab-btn active" onclick="switchTab('login')">เข้าสู่ระบบ</button>
             <button class="tab-btn" onclick="switchTab('register')">สมัครสมาชิก</button>
-            <button class="tab-btn" onclick="switchTab('password')">เปลี่ยนรหัสผ่าน</button>
         </div>
 
         <form id="loginForm" onsubmit="handleLogin(event)">
@@ -200,27 +199,23 @@
             <button type="submit" class="btn btn-primary">สมัครสมาชิก</button>
         </form>
 
-        <form id="passwordForm" style="display: none;" onsubmit="handleChangePassword(event)">
-            <div class="form-group">
-                <label>Username (ชื่อผู้ใช้)</label>
-                <input type="text" id="passUsername" required placeholder="ชื่อผู้ใช้">
-            </div>
-            <div class="form-group">
-                <label>รหัสผ่านเดิม</label>
-                <input type="password" id="oldPassword" required placeholder="กรอกรหัสผ่านเดิม">
-            </div>
-            <div class="form-group">
-                <label>รหัสผ่านใหม่</label>
-                <input type="password" id="newPassword" required placeholder="ตั้งรหัสผ่านใหม่">
-            </div>
-            <button type="submit" class="btn btn-primary">ยืนยันเปลี่ยนรหัสผ่าน</button>
-        </form>
     </div>
 
     <!-- ส่วนที่ 2: แสดงเมื่อ "ล็อกอินแล้ว" เท่านั้น (Logged In Area) -->
     <div id="loggedInArea" style="display: none; text-align: center;">
         <h2 style="color: #d32f2f;">✅ เข้าสู่ระบบแล้ว</h2>
         <p>ยินดีต้อนรับคุณ <strong id="showUsername" style="font-size: 18px;"></strong></p>
+        <form id="passwordForm" onsubmit="handleChangePassword(event)" style="text-align:left; margin-top:20px;">
+            <div class="form-group">
+                <label>รหัสผ่านเดิม</label>
+                <input type="password" id="oldPassword" required placeholder="กรอกรหัสผ่านเดิม">
+            </div>
+            <div class="form-group">
+                <label>รหัสผ่านใหม่ (อย่างน้อย 8 ตัว)</label>
+                <input type="password" id="newPassword" required minlength="8" placeholder="ตั้งรหัสผ่านใหม่">
+            </div>
+            <button type="submit" class="btn btn-primary">ยืนยันเปลี่ยนรหัสผ่าน</button>
+        </form>
         <button class="btn btn-secondary" onclick="handleLogout()" style="width: 100%; margin-top: 20px;">ออกจากระบบ</button>
     </div>
 
@@ -231,11 +226,20 @@
 
 <script>
     // เช็คสถานะตอนเปิดหน้าเว็บมาว่าล็อกอินอยู่ไหม
+    // อ่านพารามิเตอร์ next (รับเฉพาะ path ในเว็บเดียวกัน กันถูกส่งไปเว็บอื่น)
+    function getNext() {
+        const next = new URLSearchParams(window.location.search).get('next');
+        if (next && next.startsWith('/') && !next.startsWith('//') && !next.includes('\\')) return next;
+        return null;
+    }
+
     window.onload = function() {
         const token = localStorage.getItem('token');
         const userStr = localStorage.getItem('user');
         
         if (token && userStr) {
+            const nextUrl = getNext();
+            if (nextUrl) { window.location.replace(nextUrl); return; }
             document.getElementById('guestArea').style.display = 'none';
             document.getElementById('loggedInArea').style.display = 'block';
             
@@ -257,12 +261,10 @@
     function switchTab(tab) {
         document.getElementById('loginForm').style.display = tab === 'login' ? 'block' : 'none';
         document.getElementById('registerForm').style.display = tab === 'register' ? 'block' : 'none';
-        document.getElementById('passwordForm').style.display = tab === 'password' ? 'block' : 'none';
         
         const btns = document.querySelectorAll('.tab-btn');
         btns[0].classList.toggle('active', tab === 'login');
         btns[1].classList.toggle('active', tab === 'register');
-        btns[2].classList.toggle('active', tab === 'password');
         document.getElementById('alertBox').style.display = 'none';
     }
 
@@ -282,7 +284,7 @@
             localStorage.setItem('token', data.access_token);
             localStorage.setItem('user', JSON.stringify(data.user));
             showAlert('เข้าสู่ระบบสำเร็จ! กำลังพาไปหน้าหลัก...');
-            setTimeout(() => { window.location.href = '/'; }, 1000);
+            setTimeout(() => { window.location.href = getNext() || '/'; }, 1000);
         } else {
             showAlert(data.detail || 'เข้าสู่ระบบไม่สำเร็จ', false);
         }
@@ -314,24 +316,25 @@
 
     async function handleChangePassword(e) {
         e.preventDefault();
-        const username = document.getElementById('passUsername').value;
         const old_password = document.getElementById('oldPassword').value;
         const new_password = document.getElementById('newPassword').value;
 
         const res = await fetch('/api/v1/auth/change-password', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username, old_password, new_password })
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + localStorage.getItem('token')
+            },
+            body: JSON.stringify({ old_password, new_password })
         });
         const data = await res.json();
 
         if (res.ok) {
             showAlert(data.message);
-            document.getElementById('passUsername').value = '';
             document.getElementById('oldPassword').value = '';
             document.getElementById('newPassword').value = '';
-            setTimeout(() => switchTab('login'), 1500);
         } else {
+            if (res.status === 401) { handleLogout(); return; }
             showAlert(data.detail || 'เปลี่ยนรหัสผ่านไม่สำเร็จ', false);
         }
     }
