@@ -35,7 +35,7 @@
         }
 
         /* 🆕 ขอบไล่สีเรืองแสงวิ่งรอบการ์ด (เหมือนขอบ RGB ของเมาส์เกมมิ่ง) */
-.auth-card::before {
+        .auth-card::before {
             content: '';
             position: absolute;
             inset: -3px;
@@ -44,7 +44,7 @@
             background: linear-gradient(120deg, #ff5a1f, #d32f2f, #ffcc00, #d32f2f, #ff5a1f);
             background-size: 300% 300%;
             -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-            mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0); /* 👈 เพิ่มบรรทัดนี้ */
+            mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
             -webkit-mask-composite: xor;
             mask-composite: exclude;
             opacity: 0.85;
@@ -247,6 +247,13 @@
         }
     };
 
+    // 🆕 อ่านปลายทางหลังล็อกอินจาก ?next=... (รับเฉพาะ path ภายในเว็บเรา กัน open redirect)
+    function getNextUrl() {
+        const next = new URLSearchParams(location.search).get('next');
+        if (next && next.startsWith('/') && !next.startsWith('//')) return next;
+        return '/';
+    }
+
     function showAlert(message, isSuccess = true) {
         const box = document.getElementById('alertBox');
         box.className = `alert ${isSuccess ? 'alert-success' : 'alert-error'}`;
@@ -281,8 +288,9 @@
         if (res.ok) {
             localStorage.setItem('token', data.access_token);
             localStorage.setItem('user', JSON.stringify(data.user));
-            showAlert('เข้าสู่ระบบสำเร็จ! กำลังพาไปหน้าหลัก...');
-            setTimeout(() => { window.location.href = '/'; }, 1000);
+            // 🆕 กลับไปหน้าที่ส่งมา (?next=) แทนการไปหน้าหลักเสมอ
+            showAlert('เข้าสู่ระบบสำเร็จ! กำลังพากลับ...');
+            setTimeout(() => { window.location.href = getNextUrl(); }, 600);
         } else {
             showAlert(data.detail || 'เข้าสู่ระบบไม่สำเร็จ', false);
         }

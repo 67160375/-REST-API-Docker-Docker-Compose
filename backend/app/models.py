@@ -6,8 +6,8 @@ models.py
 """
 
 from datetime import datetime
-from typing import Optional, List
-from sqlmodel import SQLModel, Field, Relationship
+from typing import List, Optional
+from sqlmodel import Field, Relationship, SQLModel
 
 
 class User(SQLModel, table=True):
@@ -16,7 +16,7 @@ class User(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     username: str = Field(index=True, unique=True, nullable=False)
     email: str = Field(index=True, unique=True, nullable=False)
-    password: str = Field(nullable=False)
+    password: str = Field(nullable=False)  # bcrypt hash (user เก่าจะถูก hash ตอนล็อกอินครั้งแรก)
     role: str = Field(default="customer")
 
 
@@ -54,6 +54,7 @@ class Booking(SQLModel, table=True):
     """การจอง/สั่งซื้อตั๋วของผู้เข้าชม 1 รายการ"""
 
     id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: Optional[int] = Field(default=None, foreign_key="user.id", index=True)  # เจ้าของการจอง
     race_id: int = Field(foreign_key="race.id")
     zone_id: int = Field(foreign_key="zone.id")
     quantity: int
@@ -61,11 +62,12 @@ class Booking(SQLModel, table=True):
     buyer_phone: Optional[str] = None
     payment_method: Optional[str] = None  # "promptpay" | "credit_card"
     total_price: int = 0
-    status: str = "pending"  # pending -> awaiting_payment -> paid -> cancelled
+    status: str = "pending"  # pending -> awaiting_payment -> paid -> cancelled -> expired
+    expires_at: Optional[datetime] = Field(default=None)  # เพิ่มสำหรับระบบนับเวลาถอยหลัง
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
     race: Optional[Race] = Relationship(back_populates="bookings")
-    zone: Optional[Zone] = Relationship(back_populates="bookings") # <-- จุดที่แก้ไขแล้ว
+    zone: Optional[Zone] = Relationship(back_populates="bookings")
     ticket: Optional["Ticket"] = Relationship(back_populates="booking")
 
 

@@ -16,11 +16,13 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from sqlalchemy import text
 from sqlmodel import Session, SQLModel
 
 from app import crud, models
 from app.database import engine
 from app.routers import auth, bookings, dev, races, users
+from app.seed import seed_if_empty
 
 
 # ฟังก์ชัน Background Job คืนตั๋วหลุดจองที่หมดอายุ (ทำงานทุก 1 นาที)
@@ -38,8 +40,20 @@ scheduler.add_job(auto_release_expired_bookings, "interval", minutes=1)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: สร้างตารางใน PostgreSQL และเริ่มรัน Background Job
+    # Startup: สร้างตารางใน PostgreSQL
     SQLModel.metadata.create_all(engine)
+    
+    # --- [ส่วนที่เพิ่มใหม่] เพิ่มคอลัมน์ user_id เข้าตาราง booking อัตโนมัติหากยังไม่มี ---
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("ALTER TABLE booking ADD COLUMN IF NOT EXISTS user_id INTEGER;"))
+            conn.commit()
+            print("[System] Auto-migration: user_id column verified.")
+    except Exception as e:
+        print(f"[System] Migration note: {e}")
+    # -------------------------------------------------------------------------
+
+    seed_if_empty()
     scheduler.start()
     print("[System] Database tables verified & APScheduler started.")
     
