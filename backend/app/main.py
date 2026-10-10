@@ -42,6 +42,7 @@ scheduler.add_job(auto_release_expired_bookings, "interval", minutes=1)
 async def lifespan(app: FastAPI):
     # Startup: สร้างตารางใน PostgreSQL
     SQLModel.metadata.create_all(engine)
+<<<<<<< HEAD
     
     # --- [ส่วนที่เพิ่มใหม่] เพิ่มคอลัมน์ user_id เข้าตาราง booking อัตโนมัติหากยังไม่มี ---
     try:
@@ -53,6 +54,8 @@ async def lifespan(app: FastAPI):
         print(f"[System] Migration note: {e}")
     # -------------------------------------------------------------------------
 
+=======
+>>>>>>> f6020754512dbed3d50b11f68de4e438c8d05959
     seed_if_empty()
     scheduler.start()
     print("[System] Database tables verified & APScheduler started.")

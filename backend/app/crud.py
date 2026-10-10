@@ -50,7 +50,7 @@ def create_booking(db: Session, race_id: int, zone_id: int, quantity: int) -> Op
     statement = select(Zone).where(Zone.id == zone_id).with_for_update()
     zone = db.exec(statement).first()
 
-    if not zone or zone.available_seats < quantity:
+    if quantity < 1 or quantity > 10 or not zone or zone.race_id != race_id or zone.available_seats < quantity:
         return None
 
     zone.available_seats -= quantity

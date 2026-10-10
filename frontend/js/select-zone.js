@@ -103,36 +103,119 @@ if (qtyPlusBtn) {
   });
 }
 
-// 🔘 ปุ่มกดจองตั๋ว
-if (confirmBtn) {
-  confirmBtn.addEventListener("click", async () => {
-    if (!selectedZone) {
-      const alertMsg = getCurrentLang() === "en" ? "Please select a zone first." : "กรุณาเลือกโซนที่นั่งก่อนครับ";
-      alert(alertMsg);
+// ===== จำสิ่งที่เลือกไว้ ตอนต้องล็อกอินก่อนจอง =====
+const PENDING_KEY = "grid_pass_pending_booking";
+const PENDING_TTL_MS = 30 * 60 * 1000; // เก็บไว้ไม่เกิน 30 นาที
+
+function hasToken() {
+  const tk = localStorage.getItem("token");
+  return !!tk && tk !== "null" && tk !== "undefined" && tk.trim() !== "";
+}
+
+function savePendingSelection() {
+  if (!selectedZone) return;
+  try {
+    sessionStorage.setItem(
+      PENDING_KEY,
+      JSON.stringify({
+        raceId: Number(raceId),
+        zoneId: selectedZone.id,
+        quantity: quantity,
+        savedAt: Date.now(),
+      })
+    );
+  } catch (e) {}
+}
+
+function takePendingSelection() {
+  try {
+    const raw = sessionStorage.getItem(PENDING_KEY);
+    if (!raw) return null;
+    sessionStorage.removeItem(PENDING_KEY);
+    const p = JSON.parse(raw);
+    if (!p || p.raceId !== Number(raceId) || Date.now() - p.savedAt > PENDING_TTL_MS) return null;
+    return p;
+  } catch (e) {
+    return null;
+  }
+}
+
+// ล็อกอินเสร็จให้กลับมาหน้านี้พร้อม resume=1 เพื่อไปต่ออัตโนมัติ
+function loginRedirectUrl() {
+  const next = `${window.location.pathname}?id=${raceId}&resume=1`;
+  return `/pages/auth.html?next=${encodeURIComponent(next)}`;
+}
+
+// 🔘 จองตั๋ว (ถ้ายังไม่ล็อกอิน: จำที่เลือกไว้ แล้วพาไปล็อกอิน)
+async function submitBooking() {
+  if (!selectedZone) {
+    const alertMsg = getCurrentLang() === "en" ? "Please select a zone first." : "กรุณาเลือกโซนที่นั่งก่อนครับ";
+    alert(alertMsg);
+    return;
+  }
+
+  if (!hasToken()) {
+    savePendingSelection();
+    requireAuth(loginRedirectUrl());
+    return;
+  }
+
+  confirmBtn.disabled = true;
+  confirmBtn.textContent = t("locking_seats");
+  if (errorBox) errorBox.innerHTML = "";
+
+  try {
+    const booking = await BookingAPI.create(Number(raceId), selectedZone.id, quantity);
+    saveState({
+      raceId: Number(raceId),
+      bookingId: booking.id,
+      zone: selectedZone,
+      quantity: quantity
+    });
+    window.location.href = `checkout.html?booking_id=${booking.id}`;
+  } catch (err) {
+    confirmBtn.disabled = false;
+    confirmBtn.textContent = t("confirm_zone_btn");
+    if (err.status === 401) {
+      // token หมดอายุ/ใช้ไม่ได้ (api.js ล้างให้แล้ว) -> จำที่เลือกไว้ แล้วให้ล็อกอินใหม่
+      savePendingSelection();
+      requireAuth(loginRedirectUrl());
       return;
     }
+    showError(errorBox || zoneListEl, err.message);
+  }
+}
 
-    if (!requireAuth()) return;
+if (confirmBtn) {
+  confirmBtn.addEventListener("click", submitBooking);
+}
 
-    confirmBtn.disabled = true;
-    confirmBtn.textContent = t("locking_seats");
-    if (errorBox) errorBox.innerHTML = "";
+// กลับมาจากหน้าล็อกอิน (?resume=1): คืนค่าที่เลือกไว้ แล้วไปต่อขั้นจองให้เลย
+function resumePendingBooking() {
+  if (getQueryParam("resume") !== "1") return;
+  history.replaceState(null, "", `select-zone.html?id=${raceId}`); // กันทำซ้ำตอนรีเฟรช
 
-    try {
-      const booking = await BookingAPI.create(Number(raceId), selectedZone.id, quantity);
-      saveState({
-        raceId: Number(raceId),
-        bookingId: booking.id,
-        zone: selectedZone,
-        quantity: quantity
-      });
-      window.location.href = `checkout.html?booking_id=${booking.id}`;
-    } catch (err) {
-      showError(errorBox || zoneListEl, err.message);
-      confirmBtn.disabled = false;
-      confirmBtn.textContent = t("confirm_zone_btn");
-    }
-  });
+  const p = takePendingSelection();
+  if (!p || !hasToken()) return;
+
+  const zone = zones.find((z) => z.id === p.zoneId);
+  const box = errorBox || zoneListEl;
+  if (!zone || zone.available_seats < 1) {
+    showError(box, "โซนที่คุณเลือกไว้ที่นั่งหมดแล้ว กรุณาเลือกโซนใหม่");
+    return;
+  }
+
+  selectedZone = zone;
+  quantity = Math.min(p.quantity, zone.available_seats, 10);
+  updateSummary();
+  renderZones();
+
+  if (quantity < p.quantity) {
+    // ที่นั่งเหลือน้อยกว่าที่เลือกไว้ ไม่จองให้เอง ให้ผู้ใช้ตรวจจำนวนก่อน
+    showError(box, `ที่นั่งเหลือไม่พอตามที่เลือกไว้ ปรับเป็น ${quantity} ใบ กรุณาตรวจสอบแล้วกดจองอีกครั้ง`);
+    return;
+  }
+  submitBooking();
 }
 
 async function loadZones() {
@@ -143,6 +226,7 @@ async function loadZones() {
   try {
     zones = await RaceAPI.getZones(raceId);
     renderZones();
+    resumePendingBooking();
   } catch (err) {
     showError(zoneListEl, err.message);
   }
