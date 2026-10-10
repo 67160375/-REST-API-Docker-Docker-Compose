@@ -1,4 +1,3 @@
-cat > backend/app/routers/races.py << 'EOF'
 """
 routers/races.py
 ------------------
@@ -45,4 +44,3 @@ def get_race_zones(race_id: int, db: Session = Depends(get_db)):
     if not race:
         raise HTTPException(status_code=404, detail="ไม่พบรายการแข่งขันนี้")
     return crud.list_zones(db=db, race_id=race_id)
-EOF
