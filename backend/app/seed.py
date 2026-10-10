@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 """
 seed.py
 --------
@@ -10,8 +9,6 @@ seed.py
 (ราคาโซนที่ถูกที่สุดต้องเท่ากับ price_from ของรายการนั้น)
 """
 
-=======
->>>>>>> f6020754512dbed3d50b11f68de4e438c8d05959
 from sqlmodel import Session, select
 
 from app.database import engine
@@ -19,11 +16,8 @@ from app.models import Race, Zone
 
 _VENUE = "ช้าง อินเตอร์เนชั่นแนล เซอร์กิต จ.บุรีรัมย์"
 
-<<<<<<< HEAD
 # โซนเป็น (ชื่อโซน, ราคา, จำนวนที่นั่ง)
-=======
 # โซนเป็น (ชื่อโซน, ราคา, จำนวนที่นั่ง) ชื่อโซน/ราคา/จำนวนที่นั่งเป็นค่าสมมติ แก้ได้
->>>>>>> f6020754512dbed3d50b11f68de4e438c8d05959
 _SAMPLE_RACES = [
     {
         "name": "Thailand Super Series 2026",
@@ -31,15 +25,12 @@ _SAMPLE_RACES = [
         "race_date": "15/08/2026",
         "venue": _VENUE,
         "price_from": 500,
-<<<<<<< HEAD
         "zones": [
             ("Side Stand", 500, 400),
             ("Grandstand", 1000, 200),
             ("VIP Lounge", 2500, 50),
         ],
-=======
         "zones": [("Side Stand", 500, 400), ("Grandstand", 1000, 200), ("VIP Lounge", 2500, 50)],
->>>>>>> f6020754512dbed3d50b11f68de4e438c8d05959
     },
     {
         "name": "BRIC Superbike Championship",
@@ -47,15 +38,12 @@ _SAMPLE_RACES = [
         "race_date": "29/08/2026",
         "venue": _VENUE,
         "price_from": 400,
-<<<<<<< HEAD
         "zones": [
             ("Side Stand", 400, 400),
             ("Grandstand", 800, 200),
             ("VIP Lounge", 2000, 50),
         ],
-=======
         "zones": [("Side Stand", 400, 400), ("Grandstand", 800, 200), ("VIP Lounge", 2000, 50)],
->>>>>>> f6020754512dbed3d50b11f68de4e438c8d05959
     },
     {
         "name": "Thailand Grand Prix Endurance",
@@ -63,15 +51,12 @@ _SAMPLE_RACES = [
         "race_date": "12/09/2026",
         "venue": _VENUE,
         "price_from": 600,
-<<<<<<< HEAD
         "zones": [
             ("Side Stand", 600, 400),
             ("Grandstand", 1200, 200),
             ("VIP Lounge", 3000, 50),
         ],
-=======
         "zones": [("Side Stand", 600, 400), ("Grandstand", 1200, 200), ("VIP Lounge", 3000, 50)],
->>>>>>> f6020754512dbed3d50b11f68de4e438c8d05959
     },
 ]
 
@@ -80,10 +65,7 @@ def seed_if_empty() -> None:
     with Session(engine) as db:
         if db.exec(select(Race)).first():
             return
-<<<<<<< HEAD
 
-=======
->>>>>>> f6020754512dbed3d50b11f68de4e438c8d05959
         for item in _SAMPLE_RACES:
             race = Race(
                 name=item["name"],
@@ -93,7 +75,6 @@ def seed_if_empty() -> None:
                 price_from=item["price_from"],
             )
             db.add(race)
-<<<<<<< HEAD
             db.flush()  # ให้ได้ race.id ก่อนสร้างโซน
 
             for zone_name, price, seats in item["zones"]:
@@ -107,11 +88,9 @@ def seed_if_empty() -> None:
                     )
                 )
 
-=======
             db.flush()
             for zone_name, price, seats in item["zones"]:
                 db.add(Zone(race_id=race.id, name=zone_name, price=price,
                             total_seats=seats, available_seats=seats))
->>>>>>> f6020754512dbed3d50b11f68de4e438c8d05959
         db.commit()
         print(f"[Seed] Inserted {len(_SAMPLE_RACES)} races.")
