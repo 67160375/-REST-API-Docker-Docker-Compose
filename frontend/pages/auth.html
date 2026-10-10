@@ -290,14 +290,9 @@
         if (res.ok) {
             localStorage.setItem('token', data.access_token);
             localStorage.setItem('user', JSON.stringify(data.user));
-<<<<<<< HEAD
             // 🆕 กลับไปหน้าที่ส่งมา (?next=) แทนการไปหน้าหลักเสมอ
             showAlert('เข้าสู่ระบบสำเร็จ! กำลังพากลับ...');
             setTimeout(() => { window.location.href = getNextUrl(); }, 600);
-=======
-            showAlert('เข้าสู่ระบบสำเร็จ! กำลังพาไปหน้าหลัก...');
-            setTimeout(() => { window.location.href = getNext() || '/'; }, 1000);
->>>>>>> f6020754512dbed3d50b11f68de4e438c8d05959
         } else {
             showAlert(data.detail || 'เข้าสู่ระบบไม่สำเร็จ', false);
         }
