@@ -21,6 +21,13 @@ from sqlmodel import Session, SQLModel
 
 from app import crud, models
 from app.database import engine
+from sqlalchemy import text
+try:
+    with engine.connect() as conn:
+        conn.execute(text("ALTER TABLE booking ADD COLUMN IF NOT EXISTS user_id INTEGER;"))
+        conn.commit()
+except Exception as e:
+    pass
 from app.routers import auth, bookings, dev, races, users
 from app.seed import seed_if_empty
 
