@@ -45,6 +45,19 @@ scheduler = BackgroundScheduler()
 scheduler.add_job(auto_release_expired_bookings, "interval", minutes=1)
 
 
+# Index ที่เพิ่มเพื่อเพิ่มประสิทธิภาพ query (ใช้ IF NOT EXISTS จึงรันซ้ำได้ปลอดภัย)
+#  - idx_booking_open_expires : partial index สำหรับงานคืนที่นั่งที่หมดอายุ (รันทุก 1 นาที)
+#  - idx_zone_race_id         : หน้าเลือกโซน (list_zones กรองด้วย race_id)
+#  - uq_ticket_booking_id     : หา e-Ticket จาก booking_id (1 booking มี 1 ticket)
+INDEX_STATEMENTS = [
+    """CREATE INDEX IF NOT EXISTS idx_booking_open_expires
+       ON booking (expires_at)
+       WHERE status IN ('pending', 'awaiting_payment')""",
+    "CREATE INDEX IF NOT EXISTS idx_zone_race_id ON zone (race_id)",
+    "CREATE UNIQUE INDEX IF NOT EXISTS uq_ticket_booking_id ON ticket (booking_id)",
+]
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup: สร้างตารางใน PostgreSQL
@@ -58,6 +71,17 @@ async def lifespan(app: FastAPI):
             print("[System] Auto-migration: user_id column verified.")
     except Exception as e:
         print(f"[System] Migration note: {e}")
+    # -------------------------------------------------------------------------
+
+    # --- เพิ่ม index อัตโนมัติ (create_all ไม่เพิ่ม index ให้ตารางที่มีอยู่แล้ว) ---
+    try:
+        with engine.connect() as conn:
+            for stmt in INDEX_STATEMENTS:
+                conn.execute(text(stmt))
+            conn.commit()
+        print("[System] Auto-migration: indexes verified.")
+    except Exception as e:
+        print(f"[System] Index migration note: {e}")
     # -------------------------------------------------------------------------
 
     seed_if_empty()
