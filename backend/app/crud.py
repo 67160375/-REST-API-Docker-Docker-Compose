@@ -31,7 +31,11 @@ def get_race(db: Session, race_id: int) -> Optional[Race]:
 
 
 def list_zones(db: Session, race_id: int) -> List[Zone]:
-    statement = select(Zone).where(Zone.race_id == race_id)
+    statement = (
+        select(Zone)
+        .where(Zone.race_id == race_id)
+        .order_by(Zone.price, Zone.id)
+    )
     return db.exec(statement).all()
 
 
