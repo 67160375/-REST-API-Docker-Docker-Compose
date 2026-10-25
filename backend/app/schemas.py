@@ -7,7 +7,7 @@ schemas.py
 """
 
 from typing import Optional, List
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, Field, model_validator
 
 
 # ---------- Race ----------
@@ -79,7 +79,7 @@ class BookingCreate(BaseModel):
     """ผู้ใช้เลือกโซน + จำนวนตั๋ว แล้วกด 'ล็อกที่นั่งชั่วคราว'"""
     race_id: int
     zone_id: int
-    quantity: int
+    quantity: int = Field(ge=1, le=10)
 
 
 class BookingOut(BaseModel):
