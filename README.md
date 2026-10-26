@@ -108,6 +108,9 @@ docker compose exec web python -m app.make_admin <username> staff    # พนั
 
 แล้วออกจากระบบ/ล็อกอินใหม่ เมนู "แอดมิน" และ "สแกนตั๋ว" จะขึ้นที่แถบด้านบน
 
+**บน Render (ไม่มี Shell):** สมัครสมาชิกบนเว็บก่อน แล้วไปที่ Render → Environment เพิ่ม
+`ADMIN_USERNAMES=<username>` (หลายคนคั่นด้วย `,`) แล้ว Save ระบบจะตั้งเป็น admin ให้ตอนเริ่มระบบ
+
 ### Flow การชำระเงิน
 
 1. ลูกค้าเลือกโซน → ระบบล็อกที่นั่ง 10 นาที
@@ -179,7 +182,8 @@ FastAPI mount โฟลเดอร์ `frontend/` เป็น static files ใ
 หรือ Railway โดยให้อ่าน `backend/Dockerfile`
 
 ข้อควรระวังตอน deploy:
-- ตั้ง environment ครบตาม `.env.example` (โดยเฉพาะ `SECRET_KEY`, `DATABASE_URL`, `PROMPTPAY_ID`)
+- ไฟล์ `.env` ไม่ถูกส่งขึ้น GitHub ต้องตั้ง environment ในหน้า Render → Environment ให้ครบตาม `.env.example`
+  (โดยเฉพาะ `SECRET_KEY`, `DATABASE_URL`, `PROMPTPAY_ID`, `PROMPTPAY_NAME`, `ADMIN_USERNAMES`)
 - รูปสลิปเก็บที่ `UPLOAD_DIR` (`/app/uploads`) ต้องผูก persistent disk/volume ไม่งั้นรูปหายตอน redeploy
 - ปิด/ลบ router `dev` (`/api/dev/reset`) ก่อนใช้งานจริง
 - หน้าสแกนตั๋วใช้กล้องได้เฉพาะเว็บที่เป็น https

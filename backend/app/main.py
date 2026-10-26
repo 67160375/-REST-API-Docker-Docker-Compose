@@ -17,10 +17,11 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
-from sqlmodel import Session, SQLModel
+from sqlmodel import Session, SQLModel, select
 
 from app import config, crud, models  # noqa: F401  (models ต้อง import ก่อน create_all)
 from app.database import engine
+from app.models import User
 from app.routers import admin, auth, bookings, checkin, dev, races, users
 from app.seed import seed_if_empty, sync_sample_data
 
@@ -99,12 +100,30 @@ def run_migrations() -> None:
     print(f"[System] Auto-migration done ({len(statements) - failed}/{len(statements)} ok).")
 
 
+def promote_admins_from_env() -> None:
+    """ตั้ง role admin ให้ชื่อผู้ใช้ใน ADMIN_USERNAMES (เฉพาะคนที่สมัครไว้แล้ว)"""
+    if not config.ADMIN_USERNAMES:
+        return
+    with Session(engine) as db:
+        users = db.exec(select(User).where(User.username.in_(config.ADMIN_USERNAMES))).all()
+        for user in users:
+            if user.role != "admin":
+                user.role = "admin"
+                db.add(user)
+                print(f"[System] Promoted '{user.username}' to admin (ADMIN_USERNAMES).")
+        db.commit()
+        missing = set(config.ADMIN_USERNAMES) - {u.username for u in users}
+        if missing:
+            print(f"[System] ADMIN_USERNAMES not registered yet: {', '.join(sorted(missing))}")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     SQLModel.metadata.create_all(engine)
     run_migrations()
     seed_if_empty()
     sync_sample_data()
+    promote_admins_from_env()
     config.UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
     scheduler.start()
     print("[System] Database ready & APScheduler started.")
@@ -127,6 +146,16 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.middleware("http")
+async def revalidate_frontend_files(request, call_next):
+    """ให้เบราว์เซอร์เช็กไฟล์หน้าเว็บ (js/css/html) ใหม่ทุกครั้ง กันค้างเวอร์ชันเก่าหลังอัปเดต
+    (ไฟล์ไม่เปลี่ยน = ได้ 304 กลับมา ไม่ต้องโหลดซ้ำ จึงไม่ช้าลง)"""
+    response = await call_next(request)
+    if not request.url.path.startswith("/api"):
+        response.headers.setdefault("Cache-Control", "no-cache")
+    return response
+
 
 app.include_router(races.router)
 app.include_router(bookings.router)

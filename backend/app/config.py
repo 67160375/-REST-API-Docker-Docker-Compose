@@ -36,3 +36,8 @@ SLIP_VERIFY_API_KEY = os.getenv("SLIP_VERIFY_API_KEY", "").strip()
 SLIP_VERIFY_URL = os.getenv("SLIP_VERIFY_URL", "https://developer.easyslip.com/api/v1/verify").strip()
 # ตัวอักษรบางส่วนของชื่อ/เลขบัญชีผู้รับ ที่ต้องเจอในผลตรวจ (เว้นว่าง = ไม่เช็กผู้รับ)
 SLIP_RECEIVER_HINT = os.getenv("SLIP_RECEIVER_HINT", "").strip()
+
+# ---- ตั้งแอดมินผ่าน environment (สะดวกบน Render ที่ไม่มี Shell) ----
+# ใส่ชื่อผู้ใช้ที่สมัครไว้แล้ว คั่นด้วยจุลภาค เช่น ADMIN_USERNAMES=maxxis,friend1
+# ระบบจะตั้งเป็น admin ให้ตอนเริ่มระบบ (ต้องสมัครสมาชิกก่อน แล้วค่อย restart/redeploy)
+ADMIN_USERNAMES = [u.strip() for u in os.getenv("ADMIN_USERNAMES", "").split(",") if u.strip()]
