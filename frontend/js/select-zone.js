@@ -36,6 +36,14 @@ function selectZone(zoneId) {
   renderHotspots();
 }
 
+// จุดเด่นของโซน (description คั่นแต่ละข้อด้วยการขึ้นบรรทัดใหม่)
+function zonePerks(zone) {
+  return String(zone.description || "")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+}
+
 function renderHotspots() {
   const placed = zones.filter((z) => z.map_x != null && z.map_y != null && z.map_w != null && z.map_h != null);
   hotspotsEl.innerHTML = placed
@@ -47,7 +55,7 @@ function renderHotspots() {
           class="hotspot crowd-${esc(z.crowd_level || "low")} ${selected ? "selected" : ""}"
           style="left:${Number(z.map_x)}%;top:${Number(z.map_y)}%;width:${Number(z.map_w)}%;height:${Number(z.map_h)}%;"
           data-zone-id="${z.id}" ${soldOut ? "disabled" : ""}
-          title="${esc(z.name)} • ${esc(formatPrice(z.price))} • ${soldOut ? "เต็ม" : `เหลือ ${z.available_seats} ที่`}">
+          title="${esc([`${z.name} • ${formatPrice(z.price)} • ${soldOut ? "เต็ม" : `เหลือ ${z.available_seats} ที่`}`, ...zonePerks(z)].join("\n"))}">
           <span class="hotspot-label">${esc(z.name)}<small>${esc(formatPrice(z.price))}</small></span>
         </button>`;
     })
@@ -67,12 +75,17 @@ function renderZones() {
       const crowdBadge = zone.crowd_label
         ? `<span class="crowd-badge crowd-${esc(zone.crowd_level || "low")}"><span class="crowd-dot"></span>${esc(zone.crowd_label)}</span>`
         : "";
+      const perks = zonePerks(zone);
+      const perksHtml = perks.length
+        ? `<ul class="zone-perks">${perks.map((p) => `<li>${esc(p)}</li>`).join("")}</ul>`
+        : "";
       return `
         <div class="zone-card ${isSelected ? "selected" : ""} ${soldOut ? "disabled" : ""}" data-zone-id="${zone.id}"
              role="button" tabindex="${soldOut ? -1 : 0}" aria-pressed="${isSelected}">
           <div>
             <div class="zone-name">${esc(zone.name)}</div>
             <div class="zone-seats">${esc(seatsText)}</div>
+            ${perksHtml}
             ${crowdBadge}
           </div>
           <div class="zone-price">${formatPrice(zone.price)}</div>

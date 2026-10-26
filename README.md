@@ -65,7 +65,7 @@ Grid-Pass-TH/
 │   │   └── auth.html             #    เข้าสู่ระบบ / สมัครสมาชิก
 │   ├── css/style.css
 │   ├── js/                   # api.js, common.js + สคริปต์ต่อหน้า + vendor/
-│   └── assets/circuit-map.svg  # ภาพผังสนาม "ชั่วคราว"
+│   └── assets/circuit-map.png  # ภาพผังสนาม + จุดชม
 ├── docs/
 ├── docker-compose.yml
 ├── .env.example

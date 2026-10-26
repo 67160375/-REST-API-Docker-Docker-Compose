@@ -61,6 +61,7 @@ class ZoneOut(BaseModel):
     map_y: Optional[float] = None
     map_w: Optional[float] = None
     map_h: Optional[float] = None
+    description: Optional[str] = None  # จุดเด่นของโซน (คั่นบรรทัดด้วย \n)
 
     # Stand Crowd Status — คำนวณอัตโนมัติจาก available_seats / total_seats
     crowd_level: Optional[str] = None   # "low" | "medium" | "full"

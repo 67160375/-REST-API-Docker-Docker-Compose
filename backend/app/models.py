@@ -72,6 +72,7 @@ class Zone(SQLModel, table=True):
     map_y: Optional[float] = None
     map_w: Optional[float] = None
     map_h: Optional[float] = None
+    description: Optional[str] = None  # จุดเด่นของโซน 1 บรรทัด = 1 ข้อ เช่น "ห้องรับรองติดแอร์"
 
     race: Optional[Race] = Relationship(back_populates="zones")
     bookings: List["Booking"] = Relationship(back_populates="zone")

@@ -21,12 +21,25 @@ from app.database import engine
 from app.models import Booking, Race, ScheduleItem, Zone
 
 _VENUE = "ช้าง อินเตอร์เนชั่นแนล เซอร์กิต จ.บุรีรัมย์"
-DEFAULT_MAP_URL = "/assets/circuit-map.svg"
+DEFAULT_MAP_URL = "/assets/circuit-map.png"
 _SEAT_TAKING_STATUSES = ("pending", "awaiting_payment", "pending_review", "rejected", "paid")
 
 # ตำแหน่งโซนบนภาพผังสนาม (หน่วย % ของภาพ: x, y, กว้าง, สูง) ต้องตรงกับภาพที่ใช้
-# ได้ภาพจริงแล้ว เปิดหน้าเลือกโซนด้วย ?mapdebug=1 แล้วคลิกบนภาพเพื่อดูพิกัด %
+# เปลี่ยนภาพใหม่: เปิดหน้าเลือกโซนด้วย ?mapdebug=1 แล้วคลิกบนภาพเพื่อดูพิกัด %
 ZONE_MAP_POSITIONS = {
+    "Side Stand": (44.1, 9.6, 29.5, 8.0),
+    "Grandstand": (5.0, 35.1, 13.0, 12.3),
+    "VIP Lounge": (5.0, 49.0, 13.0, 9.8),
+}
+
+# จุดเด่นของแต่ละโซน (1 บรรทัด = 1 ข้อ) แสดงในหน้าเลือกโซน
+ZONE_DESCRIPTIONS = {
+    "VIP Lounge": "นั่งชั้นล่าง ต่ำกว่า Grandstand ใกล้สนามมากกว่า\nห้องรับรองติดแอร์\nได้ร่วมกิจกรรม Pit Walk",
+}
+
+# ค่าจากภาพผังสนาม "ชั่วคราว" ชุดก่อน — ใช้ตรวจว่า DB ยังเป็นค่าเก่าอยู่ไหม จะได้อัปเดตให้
+_OLD_MAP_URLS = ("/assets/circuit-map.svg",)
+_OLD_ZONE_MAP_POSITIONS = {
     "Side Stand": (88.0, 38.3, 7.0, 26.7),
     "Grandstand": (32.0, 81.7, 32.0, 11.7),
     "VIP Lounge": (66.0, 81.7, 12.0, 11.7),
@@ -103,7 +116,7 @@ _SAMPLE_RACES = [
 def _zone(race_id: int, name: str, price: int, seats: int) -> Zone:
     x, y, w, h = ZONE_MAP_POSITIONS.get(name, (None, None, None, None))
     return Zone(race_id=race_id, name=name, price=price, total_seats=seats, available_seats=seats,
-                map_x=x, map_y=y, map_w=w, map_h=h)
+                map_x=x, map_y=y, map_w=w, map_h=h, description=ZONE_DESCRIPTIONS.get(name))
 
 
 def _add_schedule(db: Session, race_id: int, items) -> None:
@@ -161,15 +174,22 @@ def sync_sample_data() -> None:
                     removed += 1
                 by_name[name] = [keep]
 
-            # 2) ตำแหน่งโซนบนภาพ (เฉพาะโซนที่ยังไม่มีค่า)
+            # 2) ตำแหน่งโซนบนภาพ + จุดเด่นของโซน
+            #    อัปเดตเฉพาะโซนที่ยังว่าง หรือยังเป็นค่าของภาพชั่วคราวชุดเก่า (ค่าที่แก้เองจะไม่ถูกทับ)
             for zones in by_name.values():
                 for z in zones:
-                    if z.map_x is None and z.name in ZONE_MAP_POSITIONS:
+                    current = (z.map_x, z.map_y, z.map_w, z.map_h)
+                    if z.name in ZONE_MAP_POSITIONS and (
+                        z.map_x is None or current == _OLD_ZONE_MAP_POSITIONS.get(z.name)
+                    ):
                         z.map_x, z.map_y, z.map_w, z.map_h = ZONE_MAP_POSITIONS[z.name]
                         db.add(z)
+                    if not z.description and z.name in ZONE_DESCRIPTIONS:
+                        z.description = ZONE_DESCRIPTIONS[z.name]
+                        db.add(z)
 
-            # 3) ภาพผังสนาม
-            if not race.venue_map_url:
+            # 3) ภาพผังสนาม (ว่าง หรือยังเป็นภาพชั่วคราวชุดเก่า -> ภาพปัจจุบัน)
+            if not race.venue_map_url or race.venue_map_url in _OLD_MAP_URLS:
                 race.venue_map_url = DEFAULT_MAP_URL
                 db.add(race)
 

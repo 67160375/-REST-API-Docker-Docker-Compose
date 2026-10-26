@@ -945,3 +945,8 @@ code { background: #f1f1f1; padding: 2px 6px; border-radius: 4px; font-size: 0.8
   .hotspot-label { padding: 1px 4px; }
   .hotspot-label small { display: none; }
 }
+
+/* ---------- จุดเด่นของโซน (เช่น VIP) ---------- */
+.zone-perks { list-style: none; margin: 6px 0 2px; padding: 0; font-size: 0.86rem; color: var(--color-text); }
+.zone-perks li { padding-left: 22px; position: relative; margin-bottom: 2px; }
+.zone-perks li::before { content: "✓"; position: absolute; left: 4px; color: var(--color-success); font-weight: 900; }

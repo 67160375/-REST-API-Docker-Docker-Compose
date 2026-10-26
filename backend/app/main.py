@@ -58,6 +58,7 @@ COLUMN_MIGRATIONS = [
     ("zone", "map_y", "DOUBLE PRECISION"),
     ("zone", "map_w", "DOUBLE PRECISION"),
     ("zone", "map_h", "DOUBLE PRECISION"),
+    ("zone", "description", "VARCHAR"),
     ("ticket", "checked_in_at", "TIMESTAMP WITHOUT TIME ZONE"),
     ("ticket", "checked_in_by", "INTEGER"),
 ]
