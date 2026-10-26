@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlmodel import Session, select
 
+from app import config
 from app.database import get_db
 from app.models import User
 from app.security import (
@@ -83,6 +84,13 @@ def login_user(data: LoginRequest, db: Session = Depends(get_db)):
     # user เก่าที่รหัสผ่านยังเป็นข้อความธรรมดา: hash ให้ตอนล็อกอินสำเร็จ
     if not is_hashed(user.password):
         user.password = hash_password(data.password)
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+    # ชื่ออยู่ใน ADMIN_USERNAMES -> ตั้งเป็น admin ตอนล็อกอิน
+    if user.role != "admin" and user.username in config.ADMIN_USERNAMES:
+        user.role = "admin"
         db.add(user)
         db.commit()
         db.refresh(user)

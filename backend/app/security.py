@@ -14,6 +14,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlmodel import Session
 
+from app import config
 from app.database import get_db
 from app.models import User
 
@@ -88,6 +89,14 @@ def get_current_user(
     user = db.get(User, user_id)
     if not user:
         raise _unauthorized("ไม่พบบัญชีผู้ใช้นี้")
+
+    # ชื่ออยู่ใน ADMIN_USERNAMES (ตั้งใน .env / Render) -> ตั้งเป็น admin ทันที
+    # ไม่ต้องรอ restart และไม่สนว่าสมัครก่อนหรือหลังตั้งค่า
+    if user.role != "admin" and user.username in config.ADMIN_USERNAMES:
+        user.role = "admin"
+        db.add(user)
+        db.commit()
+        db.refresh(user)
     return user
 
 
