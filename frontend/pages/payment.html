@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="../css/style.css" />
 </head>
 <body>
-  <main class="page-container">
+  <main class="page-container narrow">
     <div class="step-track">
       <span class="step done">1. ค้นหารายการแข่ง</span>
       <span class="step done">2. ดูรายละเอียด</span>
@@ -17,18 +17,28 @@
       <span class="step">6. รับ e-Ticket</span>
     </div>
 
-    <h1 class="page-title">ชำระเงิน</h1>
-    <p class="page-subtitle">สแกน QR Code พร้อมเพย์ หรือกรอกข้อมูลบัตร</p>
+    <h1 class="page-title">ชำระเงินด้วยพร้อมเพย์</h1>
+    <p class="page-subtitle">สแกน QR จ่ายตามยอด แล้วแนบสลิปเพื่อยืนยัน</p>
 
+    <div id="countdown" class="countdown"></div>
     <div id="payment-content">
       <div class="skeleton">กำลังโหลดข้อมูลการชำระเงิน...</div>
     </div>
 
-    <div id="error-box"></div>
-
-    <button class="btn btn-primary btn-block" id="confirm-payment-btn">ยืนยันการชำระเงิน</button>
+    <form id="slip-form" class="slip-form" hidden>
+      <h2 class="section-title">แนบสลิปการโอนเงิน</h2>
+      <label class="slip-drop" for="slip-input" id="slip-drop">
+        <input type="file" id="slip-input" accept="image/jpeg,image/png,image/webp" hidden />
+        <img id="slip-preview" alt="ตัวอย่างสลิป" hidden />
+        <span id="slip-placeholder">📎 แตะเพื่อเลือกรูปสลิป<br /><small>JPG / PNG / WEBP ไม่เกิน 5MB</small></span>
+      </label>
+      <div id="error-box"></div>
+      <button type="submit" class="btn btn-primary btn-block" id="submit-slip-btn" disabled>ส่งสลิปเพื่อยืนยันการชำระเงิน</button>
+      <p class="muted small center">ส่งสลิปแล้ว ระบบจะกันที่นั่งไว้ให้จนทีมงานตรวจสอบเสร็จ</p>
+    </form>
   </main>
 
+  <script src="../js/vendor/qrcode-generator.js"></script>
   <script src="../js/common.js"></script>
   <script src="../js/api.js"></script>
   <script src="../js/payment.js"></script>

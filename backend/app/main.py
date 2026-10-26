@@ -2,11 +2,11 @@
 main.py
 --------
 จุดเริ่มต้นของ backend (FastAPI)
-- สร้างตารางทั้งหมดลง PostgreSQL อัตโนมัติ
-- ตั้งระบบ APScheduler คืนตั๋วหมดอายุอัตโนมัติทุก 1 นาที
+- สร้างตาราง + เพิ่มคอลัมน์/index ใหม่ให้ DB เดิมอัตโนมัติ (auto-migration แบบง่าย)
+- ใส่/อัปเดตข้อมูลตัวอย่าง
+- ตั้งระบบ APScheduler คืนที่นั่งของการจองที่หมดเวลาอัตโนมัติทุก 1 นาที
 - mount โฟลเดอร์ frontend/ เป็น static files (เว็บหน้าบ้าน)
-- เปิด API routes ใต้ /api/*
-- เปิด Swagger UI อัตโนมัติที่ /docs
+- เปิด API routes ใต้ /api/* และ Swagger UI ที่ /docs
 """
 
 from contextlib import asynccontextmanager
@@ -19,78 +19,96 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 from sqlmodel import Session, SQLModel
 
-from app import crud, models
+from app import config, crud, models  # noqa: F401  (models ต้อง import ก่อน create_all)
 from app.database import engine
-from sqlalchemy import text
-try:
-    with engine.connect() as conn:
-        conn.execute(text("ALTER TABLE booking ADD COLUMN IF NOT EXISTS user_id INTEGER;"))
-        conn.commit()
-except Exception as e:
-    pass
-from app.routers import auth, bookings, dev, races, users
-from app.seed import seed_if_empty
+from app.routers import admin, auth, bookings, checkin, dev, races, users
+from app.seed import seed_if_empty, sync_sample_data
 
 
-# ฟังก์ชัน Background Job คืนตั๋วหลุดจองที่หมดอายุ (ทำงานทุก 1 นาที)
 def auto_release_expired_bookings():
-    with Session(engine) as db:
-        released_count = crud.release_expired_bookings(db)
-        if released_count > 0:
-            print(f"[APScheduler] Released {released_count} expired booking(s).")
+    """Background Job: คืนที่นั่งของการจองที่หมดเวลา (ทำงานทุก 1 นาที)"""
+    try:
+        with Session(engine) as db:
+            released = crud.release_expired_bookings(db)
+            if released:
+                print(f"[APScheduler] Released {released} expired booking(s).")
+    except Exception as e:  # noqa: BLE001 - อย่าให้ job ตายเพราะ error ครั้งเดียว
+        print(f"[APScheduler] release job error: {e}")
 
 
-# ตั้งค่า Background Scheduler
 scheduler = BackgroundScheduler()
 scheduler.add_job(auto_release_expired_bookings, "interval", minutes=1)
 
 
-# Index ที่เพิ่มเพื่อเพิ่มประสิทธิภาพ query (ใช้ IF NOT EXISTS จึงรันซ้ำได้ปลอดภัย)
-#  - idx_booking_open_expires : partial index สำหรับงานคืนที่นั่งที่หมดอายุ (รันทุก 1 นาที)
-#  - idx_zone_race_id         : หน้าเลือกโซน (list_zones กรองด้วย race_id)
-#  - uq_ticket_booking_id     : หา e-Ticket จาก booking_id (1 booking มี 1 ticket)
+# create_all สร้างได้แค่ "ตารางใหม่" ไม่เพิ่มคอลัมน์ให้ตารางที่มีอยู่แล้ว
+# คอลัมน์ที่เพิ่มทีหลังทุกตัวต้องอยู่ในลิสต์นี้ (IF NOT EXISTS จึงรันซ้ำได้ปลอดภัย)
+COLUMN_MIGRATIONS = [
+    ("booking", "user_id", "INTEGER"),
+    ("booking", "slip_path", "VARCHAR"),
+    ("booking", "slip_hash", "VARCHAR"),
+    ("booking", "slip_uploaded_at", "TIMESTAMP WITHOUT TIME ZONE"),
+    ("booking", "slip_ref", "VARCHAR"),
+    ("booking", "verify_note", "VARCHAR"),
+    ("booking", "reviewed_by", "INTEGER"),
+    ("booking", "reviewed_at", "TIMESTAMP WITHOUT TIME ZONE"),
+    ("booking", "reject_reason", "VARCHAR"),
+    ("race", "venue_map_url", "VARCHAR"),
+    ("zone", "map_x", "DOUBLE PRECISION"),
+    ("zone", "map_y", "DOUBLE PRECISION"),
+    ("zone", "map_w", "DOUBLE PRECISION"),
+    ("zone", "map_h", "DOUBLE PRECISION"),
+    ("ticket", "checked_in_at", "TIMESTAMP WITHOUT TIME ZONE"),
+    ("ticket", "checked_in_by", "INTEGER"),
+]
+
+# Index เพิ่มประสิทธิภาพ query
+#  - idx_booking_open_expires : งานคืนที่นั่งที่หมดเวลา (รันทุก 1 นาที)
+#  - idx_booking_review_queue : คิวรอตรวจสลิปของแอดมิน
+#  - idx_zone_race_id         : หน้าเลือกโซน
+#  - uq_ticket_booking_id     : 1 booking มี 1 ticket (กันออกตั๋วซ้ำ)
+#  - uq_ticket_qr             : หา ticket จากข้อความใน QR ตอนสแกนเข้างาน
 INDEX_STATEMENTS = [
-    """CREATE INDEX IF NOT EXISTS idx_booking_open_expires
+    "DROP INDEX IF EXISTS idx_booking_open_expires",
+    """CREATE INDEX IF NOT EXISTS idx_booking_open_expires_v2
        ON booking (expires_at)
-       WHERE status IN ('pending', 'awaiting_payment')""",
+       WHERE status IN ('pending', 'awaiting_payment', 'rejected')""",
+    """CREATE INDEX IF NOT EXISTS idx_booking_review_queue
+       ON booking (slip_uploaded_at)
+       WHERE status = 'pending_review'""",
+    "CREATE INDEX IF NOT EXISTS idx_booking_slip_hash ON booking (slip_hash)",
+    "CREATE INDEX IF NOT EXISTS idx_booking_slip_ref ON booking (slip_ref)",
     "CREATE INDEX IF NOT EXISTS idx_zone_race_id ON zone (race_id)",
     "CREATE UNIQUE INDEX IF NOT EXISTS uq_ticket_booking_id ON ticket (booking_id)",
+    "CREATE UNIQUE INDEX IF NOT EXISTS uq_ticket_qr ON ticket (qr_code_data)",
 ]
+
+
+def run_migrations() -> None:
+    statements = [
+        f'ALTER TABLE "{table}" ADD COLUMN IF NOT EXISTS {column} {col_type}'
+        for table, column, col_type in COLUMN_MIGRATIONS
+    ] + INDEX_STATEMENTS
+    failed = 0
+    for stmt in statements:
+        try:  # แยกทีละคำสั่ง อันไหนพังจะไม่ลากอันอื่นพังไปด้วย
+            with engine.begin() as conn:
+                conn.execute(text(stmt))
+        except Exception as e:  # noqa: BLE001
+            failed += 1
+            print(f"[System] Migration note: {' '.join(stmt.split())[:80]} -> {e.__class__.__name__}: {e}")
+    print(f"[System] Auto-migration done ({len(statements) - failed}/{len(statements)} ok).")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: สร้างตารางใน PostgreSQL
     SQLModel.metadata.create_all(engine)
-    
-    # --- [ส่วนที่เพิ่มใหม่] เพิ่มคอลัมน์ user_id เข้าตาราง booking อัตโนมัติหากยังไม่มี ---
-    try:
-        with engine.connect() as conn:
-            conn.execute(text("ALTER TABLE booking ADD COLUMN IF NOT EXISTS user_id INTEGER;"))
-            conn.commit()
-            print("[System] Auto-migration: user_id column verified.")
-    except Exception as e:
-        print(f"[System] Migration note: {e}")
-    # -------------------------------------------------------------------------
-
-    # --- เพิ่ม index อัตโนมัติ (create_all ไม่เพิ่ม index ให้ตารางที่มีอยู่แล้ว) ---
-    try:
-        with engine.connect() as conn:
-            for stmt in INDEX_STATEMENTS:
-                conn.execute(text(stmt))
-            conn.commit()
-        print("[System] Auto-migration: indexes verified.")
-    except Exception as e:
-        print(f"[System] Index migration note: {e}")
-    # -------------------------------------------------------------------------
-
+    run_migrations()
     seed_if_empty()
+    sync_sample_data()
+    config.UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
     scheduler.start()
-    print("[System] Database tables verified & APScheduler started.")
-    
+    print("[System] Database ready & APScheduler started.")
     yield
-    
-    # Shutdown: ปิดระบบ Background Job เมื่อปิดเซิร์ฟเวอร์
     scheduler.shutdown()
     print("[System] APScheduler stopped.")
 
@@ -98,7 +116,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="Grid Pass API",
     description="API สำหรับระบบจองตั๋วชมการแข่งขันรถ",
-    version="0.1.0",
+    version="0.2.0",
     lifespan=lifespan,
 )
 
@@ -110,9 +128,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# รวม router ของแต่ละหมวด
 app.include_router(races.router)
 app.include_router(bookings.router)
+app.include_router(admin.router)
+app.include_router(checkin.router)
 app.include_router(auth.router)
 app.include_router(users.router)
 app.include_router(dev.router)
@@ -121,7 +140,7 @@ app.include_router(dev.router)
 @app.get("/api/health")
 def health_check():
     """ใช้เช็คว่า backend รันอยู่ปกติ"""
-    return {"status": "ok", "service": "race-ticket-thailand-api"}
+    return {"status": "ok", "service": "grid-pass-api"}
 
 
 # หา path ของโฟลเดอร์ frontend
@@ -132,5 +151,5 @@ _CANDIDATE_DIRS = [
 ]
 FRONTEND_DIR = next((p for p in _CANDIDATE_DIRS if p.is_dir()), _CANDIDATE_DIRS[0])
 
-# mount frontend เป็น static files ไว้ท้ายสุด
+# mount frontend เป็น static files ไว้ท้ายสุด (ไม่งั้นจะทับ /api)
 app.mount("/", StaticFiles(directory=str(FRONTEND_DIR), html=True), name="frontend")

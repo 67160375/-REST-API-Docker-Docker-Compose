@@ -5,79 +5,68 @@
 const detailContent = document.getElementById("detail-content");
 const raceId = getQueryParam("id");
 
-function renderDetail(race) {
-  // ดึงรายการกิจกรรม (ถ้าไม่มีให้แสดงเป็นรายการว่าง)
-  const activitiesList = race.activities || [];
-  const activitiesHtml = activitiesList.length > 0
-    ? activitiesList
-        .map(
-          (a) => `
-          <li>
-            <span class="time">${a.time}</span>
-            <span>${a.title}</span>
-          </li>
-        `
-        )
-        .join("")
-    : `<li><span>${t("no_activities") !== "no_activities" ? t("no_activities") : "ไม่มีข้อมูลกิจกรรม"}</span></li>`;
+function tr(key, fallback) {
+  const v = t(key);
+  return v !== key ? v : fallback;
+}
 
+function renderDetail(race) {
+  const today = isRaceToday(race.race_date);
   detailContent.innerHTML = `
     <div class="detail-hero">
       <div class="thumb">🏁</div>
     </div>
 
-    <span class="category-tag">${race.category}</span>
-    <h1 class="page-title">${race.name}</h1>
-    <p class="page-subtitle">${race.description || ""}</p>
+    <span class="category-tag">${esc(race.category)}</span>
+    <h1 class="page-title">${esc(race.name)}</h1>
+    <p class="page-subtitle">${esc(race.description || "")}</p>
 
     <div class="info-card">
-      <h2>${t("schedule_title") !== "schedule_title" ? t("schedule_title") : "ตารางเวลา"}</h2>
+      <h2>${getCurrentLang() === "en" ? "Event Info" : "ข้อมูลงาน"}</h2>
       <div class="info-row">
-        <span class="label">${t("race_date") !== "race_date" ? t("race_date") : "วันที่จัดงาน"}</span>
-        <span>${race.race_date}</span>
+        <span class="label">${esc(tr("race_date", "วันที่จัดงาน"))}</span>
+        <span>${esc(race.race_date)}${today ? ' <span class="live-badge">วันนี้</span>' : ""}</span>
       </div>
       <div class="info-row">
-        <span class="label">${t("venue") !== "venue" ? t("venue") : "สถานที่"}</span>
-        <span>${race.venue}</span>
+        <span class="label">${esc(tr("venue", "สถานที่"))}</span>
+        <span>${esc(race.venue)}</span>
       </div>
       <div class="info-row">
-        <span class="label">${t("from_price") !== "from_price" ? t("from_price") : "ราคาเริ่มต้น"}</span>
+        <span class="label">${esc(tr("from_price", "ราคาเริ่มต้น"))}</span>
         <span>${formatPrice(race.price_from)}</span>
       </div>
     </div>
 
     <div class="info-card">
-      <h2>${t("activities") !== "activities" ? t("activities") : "กิจกรรมในงาน"}</h2>
-      <ul class="activity-list">${activitiesHtml}</ul>
+      <div class="card-head">
+        <h2>${esc(t("schedule"))}</h2>
+        <a class="link-more" href="schedule.html?id=${encodeURIComponent(race.id)}">${getCurrentLang() === "en" ? "Full schedule →" : "ดูตารางเต็ม →"}</a>
+      </div>
+      ${renderTimeline(race.schedule, { today })}
     </div>
 
+    ${race.venue_map_url ? `
     <div class="info-card">
-      <h2>${t("venue_map") !== "venue_map" ? t("venue_map") : "ผังสนาม (Venue Map)"}</h2>
-      <img src="${race.venue_map_url}" alt="${race.name}" style="border-radius: 12px; border: 1px solid #ececec; max-width: 100%; height: auto;" />
-    </div>
+      <h2>${esc(tr("venue_map", "ผังสนาม (Venue Map)"))}</h2>
+      <img class="venue-map-img" src="${esc(race.venue_map_url)}" alt="ผังสนาม ${esc(race.name)}" />
+    </div>` : ""}
 
-    <button class="btn btn-primary btn-block" id="select-zone-btn">${t("select_zone_btn") !== "select_zone_btn" ? t("select_zone_btn") : "เลือกโซนที่นั่ง →"}</button>
+    <button class="btn btn-primary btn-block" id="select-zone-btn">${esc(tr("select_zone_btn", "เลือกโซนที่นั่ง →"))}</button>
   `;
 
   document.getElementById("select-zone-btn").addEventListener("click", () => {
     saveState({ raceId: race.id });
-    window.location.href = `select-zone.html?id=${race.id}`;
+    window.location.href = `select-zone.html?id=${encodeURIComponent(race.id)}`;
   });
 }
 
 async function loadDetail() {
   if (!raceId) {
-    showError(
-      detailContent,
-      t("err_no_race_id") !== "err_no_race_id"
-        ? t("err_no_race_id")
-        : "ไม่พบรหัสรายการแข่งขัน กรุณากลับไปเลือกใหม่"
-    );
+    showError(detailContent, tr("err_no_race_id", "ไม่พบรหัสรายการแข่งขัน กรุณากลับไปเลือกใหม่"));
     return;
   }
   try {
-    const race = await RaceAPI.getRace(raceId);
-    renderDetail(race);
+    renderDetail(await RaceAPI.getRace(raceId));
   } catch (err) {
     showError(detailContent, err.message);
   }

@@ -251,11 +251,9 @@
         }
     };
 
-    // 🆕 อ่านปลายทางหลังล็อกอินจาก ?next=... (รับเฉพาะ path ภายในเว็บเรา กัน open redirect)
+    // ปลายทางหลังล็อกอิน: ?next=... ถ้าไม่มีให้ไปหน้ารายการแข่งขัน
     function getNextUrl() {
-        const next = new URLSearchParams(location.search).get('next');
-        if (next && next.startsWith('/') && !next.startsWith('//')) return next;
-        return '/';
+        return getNext() || '/pages/races.html';
     }
 
     function showAlert(message, isSuccess = true) {

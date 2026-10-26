@@ -27,6 +27,11 @@
   box-sizing: border-box;
 }
 
+/* ให้ attribute hidden ชนะ display ของ class อื่นเสมอ */
+[hidden] {
+  display: none !important;
+}
+
 body {
   margin: 0;
   font-family: 'Noto Sans Thai', sans-serif;
@@ -624,4 +629,319 @@ footer.site-footer {
 }
 .crowd-full .crowd-dot {
   background: #e63946;
+}
+
+/* ==========================================================
+   🆕 v0.2 — ตารางการแข่ง / ผังสนาม / ชำระเงิน / แอดมิน / สแกนตั๋ว
+   ========================================================== */
+
+:root {
+  --color-success: #2e7d32;
+  --color-danger: #c62828;
+  --color-warn: #b26a00;
+}
+
+/* ---------- Header (แทน inline style เดิม) ---------- */
+.site-header { padding: 0; display: block; }
+.header-inner {
+  display: flex; justify-content: space-between; align-items: center; gap: 12px;
+  max-width: 1200px; margin: 0 auto; padding: 12px 20px; flex-wrap: wrap;
+}
+.site-header .logo { color: #fff; }
+.site-nav { display: flex; align-items: center; gap: 6px 14px; flex-wrap: wrap; font-size: 0.92rem; }
+.site-nav .nav-link { color: #fff; opacity: 0.8; font-weight: 700; padding: 4px 2px; border-bottom: 2px solid transparent; }
+.site-nav .nav-link:hover, .site-nav .nav-link.active { opacity: 1; border-bottom-color: var(--color-accent-yellow); }
+.nav-user { color: #fff; opacity: 0.9; }
+.nav-btn {
+  background: transparent; color: #fff; border: 1px solid rgba(255,255,255,0.6); border-radius: 6px;
+  padding: 5px 12px; font: inherit; font-weight: 700; cursor: pointer;
+}
+.nav-btn:hover { background: rgba(255,255,255,0.1); }
+.nav-btn-primary { background: #e50914; border-color: #e50914; }
+
+/* ---------- Layout helpers ---------- */
+.page-container.narrow { max-width: 640px; }
+.page-container.wide { max-width: 1200px; }
+.muted { color: var(--color-text-muted); }
+.small { font-size: 0.85rem; }
+.center { text-align: center; }
+.nowrap { white-space: nowrap; }
+.danger { color: var(--color-danger) !important; }
+.warn { color: var(--color-warn) !important; }
+.section-title { font-size: 1.15rem; margin: 26px 0 12px; }
+.btn-sm { padding: 8px 14px; font-size: 0.88rem; border-radius: 10px; }
+.btn-link { background: none; color: var(--color-text-muted); text-decoration: underline; }
+.btn-success { background: var(--color-success); color: #fff; }
+.btn-success:hover:not(:disabled) { filter: brightness(0.92); }
+.btn-danger { background: var(--color-danger); color: #fff; }
+.btn-danger-outline { background: #fff; color: var(--color-danger); border: 2px solid #f1b5b5; }
+.btn-dark { background: #333; color: #fff; border: 1px solid #555; }
+.btn-red { background: #e50914; color: #fff; }
+.btn-row { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 12px; }
+.btn-row > * { flex: 1; }
+.alert-success { background: #e8f5e9; color: #1b5e20; border: 1px solid #b9e0bb; }
+.alert-info { background: #e8f1fd; color: #0d47a1; border: 1px solid #b8d3f5; }
+.select {
+  padding: 10px 14px; border-radius: var(--radius-sm); border: 2px solid var(--color-border);
+  font: inherit; background: #fff; width: 100%;
+}
+.card-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.link-more { color: var(--color-primary-dark); font-weight: 700; font-size: 0.9rem; }
+code { background: #f1f1f1; padding: 2px 6px; border-radius: 4px; font-size: 0.85em; }
+
+/* ---------- Modal (กลาง) ---------- */
+.modal-backdrop {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 1000;
+  display: flex; align-items: center; justify-content: center; padding: 16px; backdrop-filter: blur(3px);
+}
+.modal-backdrop[hidden] { display: none; }
+.modal-card {
+  background: #fff; border-radius: var(--radius-lg); padding: 24px; width: 100%; max-width: 440px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+}
+.modal-card h3 { margin-top: 0; }
+.modal-dark { background: #181818; color: #fff; border: 2px solid #e50914; text-align: center; box-shadow: 0 0 25px rgba(229,9,20,0.5); }
+.modal-dark h3 { color: #e50914; font-size: 1.4rem; }
+.modal-dark p { color: #ccc; }
+.modal-actions { display: flex; gap: 10px; margin-top: 16px; }
+.modal-actions > * { flex: 1; }
+.radio-group label { display: flex; gap: 8px; align-items: center; font-weight: 500; margin-bottom: 8px; }
+.radio-group input { width: auto; }
+#reject-other { margin-top: 8px; }
+
+/* ---------- Timeline (ตารางการแข่ง) ---------- */
+.timeline { list-style: none; margin: 0; padding: 0; position: relative; }
+.timeline-item { display: grid; grid-template-columns: 96px 18px 1fr; gap: 10px; padding: 10px 0; position: relative; }
+.timeline-item::before {
+  content: ""; position: absolute; left: 113px; top: 0; bottom: 0; width: 2px; background: var(--color-border);
+}
+.timeline-item:first-child::before { top: 18px; }
+.timeline-item:last-child::before { bottom: calc(100% - 18px); }
+.tl-time { font-weight: 900; color: var(--color-primary-dark); font-variant-numeric: tabular-nums; font-size: 0.92rem; padding-top: 1px; }
+.tl-dot { width: 14px; height: 14px; border-radius: 50%; background: #fff; border: 3px solid #bbb; margin-top: 4px; z-index: 1; }
+.type-race .tl-dot { border-color: var(--color-primary); background: var(--color-primary); }
+.type-qualifying .tl-dot { border-color: var(--color-accent-purple); }
+.type-practice .tl-dot { border-color: #42a5f5; }
+.type-activity .tl-dot { border-color: var(--color-accent-green); }
+.tl-title { font-weight: 700; }
+.tl-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+.tl-note { font-size: 0.85rem; color: var(--color-text-muted); margin-top: 2px; }
+.session-tag, .class-tag { font-size: 0.75rem; font-weight: 700; padding: 2px 9px; border-radius: 999px; }
+.class-tag { background: #1c1c1c; color: #fff; }
+.session-race { background: #fff0e8; color: var(--color-primary-dark); }
+.session-qualifying { background: #f6e9fb; color: #7b1fa2; }
+.session-practice { background: #e7f2fd; color: #1565c0; }
+.session-activity { background: #eef6e3; color: #4b7314; }
+.timeline-item.live { background: #fff7f2; border-radius: 10px; }
+.live-badge {
+  display: inline-block; font-size: 0.72rem; font-weight: 900; color: #fff; background: #e53935;
+  padding: 2px 8px; border-radius: 999px; margin-left: 6px; animation: pulse 1.4s infinite;
+}
+@keyframes pulse { 50% { opacity: 0.55; } }
+
+.chip-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 18px; }
+.chip {
+  border: 2px solid var(--color-border); background: #fff; border-radius: 999px; padding: 6px 14px;
+  font: inherit; font-size: 0.88rem; font-weight: 700; cursor: pointer;
+}
+.chip.active { background: #1c1c1c; color: #fff; border-color: #1c1c1c; }
+
+.day-card {
+  background: var(--color-card); border: 1px solid var(--color-border); border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card); padding: 20px 22px; margin-bottom: 22px;
+}
+.day-card.is-today { border: 2px solid var(--color-primary); }
+.day-head { display: flex; gap: 18px; align-items: flex-start; margin-bottom: 12px; flex-wrap: wrap; }
+.day-date {
+  background: linear-gradient(135deg, var(--color-primary), var(--color-accent-yellow)); color: #fff;
+  border-radius: var(--radius-md); padding: 10px 14px; text-align: center; min-width: 120px;
+}
+.day-name { display: block; font-size: 0.85rem; font-weight: 700; }
+.day-num { display: block; font-size: 1.15rem; font-weight: 900; }
+.day-info { flex: 1; min-width: 200px; }
+.day-info h2 { margin: 0 0 4px; font-size: 1.2rem; }
+.day-info .meta { color: var(--color-text-muted); font-size: 0.88rem; margin-bottom: 6px; }
+
+/* ---------- ผังสนาม + จุดกดเลือกโซน ---------- */
+.venue-map-img { border-radius: 12px; border: 1px solid var(--color-border); width: 100%; height: auto; }
+.venue-map {
+  position: relative; border-radius: var(--radius-lg); overflow: hidden; border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-card); margin-bottom: 10px; background: #fff;
+}
+.venue-map[hidden] { display: none; }
+.venue-map img { width: 100%; height: auto; display: block; }
+.hotspot {
+  position: absolute; border-radius: 8px; border: 3px solid transparent; cursor: pointer; padding: 0;
+  display: flex; align-items: center; justify-content: center; transition: transform 0.12s, box-shadow 0.12s;
+  font: inherit;
+}
+.hotspot:hover:not([disabled]) { transform: scale(1.04); box-shadow: 0 6px 18px rgba(0,0,0,0.25); }
+/* สีทึบพอจะบังตัวหนังสือบนภาพผังสนามด้านล่าง */
+.hotspot.crowd-low { background: rgba(156,204,101,0.92); border-color: #7cb342; }
+.hotspot.crowd-medium { background: rgba(255,213,79,0.92); border-color: #f9a825; }
+.hotspot.crowd-full { background: rgba(229,115,115,0.9); border-color: #e53935; cursor: not-allowed; }
+.hotspot.selected { border-color: #1c1c1c; box-shadow: 0 0 0 4px rgba(255,90,31,0.45); background: rgba(255,90,31,0.95); }
+.hotspot-label {
+  background: rgba(28,28,28,0.85); color: #fff; font-size: clamp(0.55rem, 1.4vw, 0.8rem); font-weight: 700;
+  padding: 2px 6px; border-radius: 6px; line-height: 1.25; text-align: center; pointer-events: none;
+}
+.hotspot-label small { display: block; font-weight: 500; opacity: 0.9; }
+.map-legend { display: flex; gap: 16px; font-size: 0.82rem; color: var(--color-text-muted); margin-bottom: 18px; flex-wrap: wrap; }
+.map-legend[hidden] { display: none; }
+.map-legend .dot { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+.crowd-low-dot { background: var(--color-accent-green); }
+.crowd-medium-dot { background: var(--color-accent-yellow); }
+.crowd-full-dot { background: #e63946; }
+.map-debug {
+  position: absolute; left: 8px; bottom: 8px; right: 8px; background: rgba(0,0,0,0.8); color: #ffeb3b;
+  font-family: monospace; font-size: 0.8rem; padding: 6px 10px; border-radius: 6px;
+}
+.zone-card:focus-visible, .hotspot:focus-visible { outline: 3px solid var(--color-primary); outline-offset: 2px; }
+
+/* ---------- Countdown ---------- */
+.countdown:empty { display: none; }
+.countdown {
+  background: #fff6de; color: #8a6a00; border: 1px solid #ffe38a; border-radius: var(--radius-sm);
+  padding: 10px 14px; margin-bottom: 16px; font-weight: 500;
+}
+.countdown.urgent { background: #ffe9e5; color: #b23a12; border-color: #ffc4b5; }
+
+/* ---------- Checkout / Payment ---------- */
+.payment-options.single { grid-template-columns: 1fr; }
+.payment-option small { display: block; font-weight: 500; color: var(--color-text-muted); margin-top: 4px; }
+.promptpay-box { border-style: solid; border-color: #113566; padding-top: 0; overflow: hidden; }
+.pp-header {
+  background: #113566; color: #fff; font-weight: 900; letter-spacing: 1px; padding: 10px;
+  margin: 0 -28px 18px;
+}
+.qr-svg { width: 240px; max-width: 80%; margin: 0 auto 10px; }
+.qr-svg svg { width: 100%; height: auto; display: block; }
+.pp-amount { font-size: 1.6rem; font-weight: 900; color: #113566; }
+.pp-name { margin: 4px 0; }
+.pp-id { margin-bottom: 12px; }
+.how-to { padding-left: 20px; margin: 0 0 10px; color: var(--color-text); font-size: 0.92rem; }
+.how-to li { margin-bottom: 6px; }
+.slip-form { margin-top: 10px; }
+.slip-form[hidden] { display: none; }
+.slip-drop {
+  display: flex; align-items: center; justify-content: center; min-height: 160px; text-align: center;
+  border: 2px dashed #cfcfcf; border-radius: var(--radius-lg); background: #fff; cursor: pointer;
+  padding: 16px; margin-bottom: 14px; color: var(--color-text-muted); font-weight: 700;
+}
+.slip-drop:hover { border-color: var(--color-primary); }
+.slip-drop img { max-height: 320px; width: auto; border-radius: 8px; }
+
+/* ---------- e-Ticket / สถานะ ---------- */
+.ticket-qr { width: 220px; }
+.state-card {
+  background: var(--color-card); border: 1px solid var(--color-border); border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card); padding: 28px 24px; text-align: center;
+}
+.state-card h1 { font-size: 1.35rem; margin: 6px 0 10px; }
+.state-card p { color: var(--color-text-muted); }
+.state-card .summary-box { text-align: left; margin-top: 18px; }
+.state-icon { font-size: 2.6rem; }
+.state-icon.spin { display: inline-block; animation: spin 2.4s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ---------- ตั๋วของฉัน ---------- */
+.booking-list { display: flex; flex-direction: column; gap: 14px; }
+.booking-card {
+  background: var(--color-card); border: 1px solid var(--color-border); border-left: 6px solid #ccc;
+  border-radius: var(--radius-md); padding: 16px 18px; display: flex; gap: 16px; align-items: center;
+  justify-content: space-between; flex-wrap: wrap; box-shadow: var(--shadow-card);
+}
+.booking-card.status-paid { border-left-color: var(--color-success); }
+.booking-card.status-pending_review { border-left-color: #1976d2; }
+.booking-card.status-awaiting_payment, .booking-card.status-pending { border-left-color: var(--color-accent-yellow); }
+.booking-card.status-rejected { border-left-color: var(--color-danger); }
+.booking-card h3 { margin: 6px 0 4px; font-size: 1.05rem; }
+.booking-card .meta { font-size: 0.88rem; color: var(--color-text-muted); }
+.booking-top { display: flex; gap: 10px; align-items: center; }
+.booking-actions { display: flex; gap: 8px; align-items: center; }
+.status-badge { display: inline-block; font-size: 0.76rem; font-weight: 700; padding: 3px 10px; border-radius: 999px; background: #eee; color: #555; }
+.status-paid { background: #e8f5e9; color: #1b5e20; }
+.status-pending_review { background: #e3f2fd; color: #0d47a1; }
+.status-awaiting_payment, .status-pending { background: #fff6de; color: #8a6a00; }
+.status-rejected { background: #ffe9e5; color: #b23a12; }
+.status-cancelled, .status-expired { background: #f1f1f1; color: #777; }
+
+/* ---------- แอดมิน ---------- */
+.stat-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-bottom: 20px; }
+.stat {
+  background: var(--color-card); border: 1px solid var(--color-border); border-radius: var(--radius-md);
+  padding: 16px; display: flex; flex-direction: column; gap: 2px; color: var(--color-text-muted); font-size: 0.88rem;
+}
+.stat-num { font-size: 1.5rem; font-weight: 900; color: var(--color-text); }
+.stat-alert { border: 2px solid #1976d2; background: #f2f8ff; }
+.tabs-bar { display: flex; gap: 6px; border-bottom: 2px solid var(--color-border); margin-bottom: 16px; overflow-x: auto; }
+.tab {
+  background: none; border: none; font: inherit; font-weight: 700; padding: 10px 14px; cursor: pointer;
+  color: var(--color-text-muted); border-bottom: 3px solid transparent; margin-bottom: -2px; white-space: nowrap;
+}
+.tab.active { color: var(--color-text); border-bottom-color: var(--color-primary); }
+.tab .count { background: #1976d2; color: #fff; border-radius: 999px; padding: 0 8px; font-size: 0.78rem; margin-left: 4px; }
+.tab-panel[hidden] { display: none; }
+.panel-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 12px; }
+.panel-head .select { max-width: 280px; }
+.review-list { display: grid; gap: 16px; }
+.review-card {
+  display: grid; grid-template-columns: 240px 1fr; gap: 18px; background: var(--color-card);
+  border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: 16px; box-shadow: var(--shadow-card);
+}
+.slip-thumb {
+  background: #f5f5f5; border: 1px solid var(--color-border); border-radius: 10px; min-height: 200px;
+  display: flex; align-items: center; justify-content: center; cursor: zoom-in; padding: 6px; overflow: hidden;
+}
+.slip-thumb img { max-width: 100%; max-height: 360px; object-fit: contain; }
+.review-amount { font-size: 1.8rem; font-weight: 900; color: var(--color-primary-dark); margin: 4px 0 8px; }
+.review-meta { display: grid; gap: 4px; font-size: 0.92rem; margin-bottom: 10px; }
+.review-meta .label { display: inline-block; min-width: 60px; color: var(--color-text-muted); font-weight: 700; }
+.review-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.slip-viewer { background: #fff; border-radius: var(--radius-lg); padding: 12px; text-align: center; max-height: 95vh; overflow: auto; }
+.slip-viewer img { max-width: min(90vw, 700px); max-height: 82vh; display: block; margin: 0 auto 10px; }
+.table-wrap { overflow-x: auto; }
+.data-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; background: #fff; }
+.data-table th, .data-table td { padding: 10px; border-bottom: 1px solid var(--color-border); text-align: left; vertical-align: top; }
+.data-table th { background: #fafafa; font-size: 0.82rem; color: var(--color-text-muted); }
+
+/* ---------- สแกนตั๋ว ---------- */
+.scanner {
+  position: relative; background: #111; border-radius: var(--radius-lg); overflow: hidden; aspect-ratio: 4 / 3;
+  display: flex; align-items: center; justify-content: center; margin-bottom: 14px;
+}
+.scanner video { width: 100%; height: 100%; object-fit: cover; }
+.scanner-idle { text-align: center; color: #ddd; padding: 20px; }
+.scanner-idle[hidden], .scanner video[hidden], .scan-frame[hidden] { display: none; }
+.scan-frame { position: absolute; width: 60%; aspect-ratio: 1; border: 4px solid rgba(255,255,255,0.85); border-radius: 18px; box-shadow: 0 0 0 999px rgba(0,0,0,0.35); }
+.manual-form { display: flex; gap: 10px; margin-bottom: 16px; }
+.manual-form input { flex: 1; padding: 12px 14px; border-radius: var(--radius-sm); border: 2px solid var(--color-border); font: inherit; }
+.scan-result { border-radius: var(--radius-lg); padding: 22px; text-align: center; color: #fff; }
+.scan-result.ok { background: var(--color-success); }
+.scan-result.bad { background: var(--color-danger); }
+.scan-result.warn { background: #ef6c00; }
+.scan-icon { font-size: 3rem; }
+.scan-message { font-size: 1.3rem; font-weight: 900; margin: 6px 0; }
+.scan-sub { font-weight: 700; opacity: 0.95; }
+.scan-details { background: rgba(255,255,255,0.15); border-radius: 12px; padding: 12px; margin-top: 12px; text-align: left; display: grid; gap: 4px; }
+.scan-details span { display: inline-block; min-width: 64px; opacity: 0.8; }
+.scan-result .btn-primary { background: #fff; color: #1c1c1c; }
+
+/* ---------- มือถือ ---------- */
+@media (max-width: 640px) {
+  .page-title { font-size: 1.45rem; }
+  .timeline-item { grid-template-columns: 78px 16px 1fr; gap: 8px; }
+  .timeline-item::before { left: 93px; }
+  .tl-time { font-size: 0.82rem; }
+  .review-card { grid-template-columns: 1fr; }
+  .day-head .btn { width: 100%; }
+  .booking-actions { width: 100%; }
+  .booking-actions .btn { flex: 1; }
+  .header-inner { padding: 10px 14px; }
+  .site-nav { font-size: 0.85rem; }
+}
+
+@media (max-width: 640px) {
+  .hotspot-label { padding: 1px 4px; }
+  .hotspot-label small { display: none; }
 }

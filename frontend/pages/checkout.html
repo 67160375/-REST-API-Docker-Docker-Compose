@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="../css/style.css" />
 </head>
 <body>
-  <main class="page-container">
+  <main class="page-container narrow">
     <div class="step-track">
       <span class="step done">1. ค้นหารายการแข่ง</span>
       <span class="step done">2. ดูรายละเอียด</span>
@@ -18,29 +18,28 @@
     </div>
 
     <h1 class="page-title">กรอกข้อมูลผู้เข้าชม</h1>
-    <p class="page-subtitle">กรอกชื่อ-เบอร์โทรผู้ซื้อ และเลือกช่องทางชำระเงิน</p>
+    <p class="page-subtitle">ชื่อนี้จะแสดงบน e-Ticket ใช้ยืนยันตัวตนหน้างาน</p>
 
+    <div id="countdown" class="countdown"></div>
     <div id="summary-panel"></div>
 
-    <form id="checkout-form">
+    <form id="checkout-form" novalidate>
       <div class="form-group">
         <label for="buyer-name">ชื่อ-นามสกุลผู้ซื้อ</label>
-        <input type="text" id="buyer-name" required placeholder="เช่น สมชาย ใจดี" />
+        <input type="text" id="buyer-name" required maxlength="100" autocomplete="name" placeholder="เช่น สมชาย ใจดี" />
       </div>
 
       <div class="form-group">
         <label for="buyer-phone">เบอร์โทรศัพท์</label>
-        <input type="tel" id="buyer-phone" required placeholder="เช่น 0812345678" pattern="0[0-9]{9}" />
+        <input type="tel" id="buyer-phone" required inputmode="numeric" autocomplete="tel" placeholder="เช่น 0812345678" maxlength="12" />
       </div>
 
       <div class="form-group">
         <label>ช่องทางชำระเงิน</label>
-        <div class="payment-options">
-          <div class="payment-option selected" data-method="promptpay">
+        <div class="payment-options single">
+          <div class="payment-option selected">
             <span class="icon">📱</span>พร้อมเพย์ / สแกน QR
-          </div>
-          <div class="payment-option" data-method="credit_card">
-            <span class="icon">💳</span>บัตรเครดิต/เดบิต
+            <small>โอนแล้วแนบสลิป ทีมงานตรวจสอบและออก e-Ticket ให้</small>
           </div>
         </div>
       </div>
@@ -48,6 +47,7 @@
       <div id="error-box"></div>
 
       <button type="submit" class="btn btn-primary btn-block" id="submit-btn">ไปหน้าชำระเงิน →</button>
+      <button type="button" class="btn btn-link btn-block" id="cancel-btn">ยกเลิกการจองนี้</button>
     </form>
   </main>
 

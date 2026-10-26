@@ -21,20 +21,28 @@
 | 2 | `frontend/pages/race-detail.html` | `GET /api/races/{id}` |
 | 3 | `frontend/pages/select-zone.html` | `GET /api/races/{id}/zones`, `POST /api/bookings` |
 | 4 | `frontend/pages/checkout.html` | `POST /api/bookings/{id}/checkout` |
-| 5 | `frontend/pages/payment.html` | `POST /api/bookings/{id}/payment` |
-| 6 | `frontend/pages/ticket-success.html` | `GET /api/bookings/{id}/ticket` |
+| 5 | `frontend/pages/payment.html` | `GET /api/bookings/{id}/payment-info`, `POST /api/bookings/{id}/slip` |
+| 5.5 | `frontend/pages/admin.html` (แอดมิน) | `GET /api/admin/bookings`, `POST /api/admin/bookings/{id}/approve` · `/reject` |
+| 6 | `frontend/pages/ticket-success.html`, `my-tickets.html` | `GET /api/bookings/{id}`, `GET /api/bookings/{id}/ticket` |
+| วันงาน | `frontend/pages/scan.html` (staff) | `POST /api/checkin` |
+| เสริม | `frontend/pages/schedule.html` | `GET /api/schedule` |
 
-## Edge Cases ที่ควรพัฒนาต่อในสัปดาห์ถัดไป
+## Edge Cases
 
-- โซนที่นั่งเต็มพอดีระหว่างผู้ใช้กำลังเลือกจำนวนตั๋ว (race condition ตอนล็อกที่นั่งจริงบน DB)
-- ผู้ใช้ปิดหน้าเว็บระหว่างขั้นตอนชำระเงิน ต้องมีระบบปล่อยที่นั่งคืนอัตโนมัติเมื่อหมดเวลาล็อก (เช่น ล็อก 10-15 นาที)
-- ชำระเงินสำเร็จแต่ระบบสร้าง booking ล้มเหลว (ต้องมี reconciliation/idempotency)
-- กรอกเบอร์โทรผิดรูปแบบ หรือชื่อผู้ซื้อไม่ตรงกับผู้เข้าชมจริง
-- ต้องการยกเลิก/ขอคืนเงินหลังจองสำเร็จ (ยังไม่ได้ทำในรอบนี้)
+| กรณี | สถานะ |
+| --- | --- |
+| โซนเต็มพอดีระหว่างหลายคนจองพร้อมกัน | ✅ ล็อกแถวโซนด้วย `SELECT ... FOR UPDATE` ไม่มีขายเกิน |
+| ปิดหน้าเว็บระหว่างชำระเงิน | ✅ ล็อก 10 นาที หมดเวลาคืนที่นั่งอัตโนมัติ |
+| โอนแล้วแต่แนบสลิปหลังหมดเวลา | ⚠️ ระบบไม่รับสลิป แจ้งให้ติดต่อผู้จัดงาน (แอดมินจัดการเอง) |
+| แอดมินกดอนุมัติซ้ำ / พร้อมกัน | ✅ ออกตั๋วใบเดียว (ล็อกแถว + unique index) |
+| ใช้สลิปเดิมกับหลายการจอง | ✅ หน้าแอดมินเตือนรูปสลิปซ้ำ (และเลขอ้างอิงซ้ำถ้าเปิดตรวจอัตโนมัติ) |
+| สแกน QR ซ้ำ / ผิดวัน | ✅ แจ้ง "ใช้ไปแล้ว" / "ไม่ตรงวันแข่ง" (ยืนยันให้เข้าได้) |
+| กรอกเบอร์โทรผิดรูปแบบ | ✅ ตรวจทั้งหน้าเว็บและ backend |
+| ยกเลิก/คืนเงินหลังชำระแล้ว | ⏳ ยังไม่ได้ทำ |
 
 ## Acceptance Criteria (สรุปจากเอกสารต้นทาง)
 
 - ราคาที่แสดงในหน้าเลือกโซนต้องตรงกับยอดชำระจริงในหน้าชำระเงินเสมอ
 - ระบบต้องล็อกที่นั่งชั่วคราวทันทีที่ผู้ใช้กดยืนยันเลือกโซน เพื่อป้องกันการจองซ้ำ
 - ต้องแสดงสถานะที่นั่งคงเหลือแบบ real-time ในหน้าเลือกโซน
-- หลังชำระเงินสำเร็จ ต้องออก e-Ticket พร้อม QR Code ทันที ดาวน์โหลด/บันทึกได้
+- หลังแอดมินอนุมัติการชำระเงิน ต้องออก e-Ticket พร้อม QR Code ทันที ดาวน์โหลด/บันทึกได้

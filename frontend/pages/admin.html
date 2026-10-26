@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>แอดมิน | Grid Pass</title>
+  <link rel="stylesheet" href="../css/style.css" />
+</head>
+<body>
+  <main class="page-container wide">
+    <h1 class="page-title">หลังบ้าน — ตรวจการชำระเงิน</h1>
+    <p class="page-subtitle">เทียบสลิปกับยอดเงินเข้าในแอปธนาคาร แล้วกดอนุมัติเพื่อออก e-Ticket</p>
+
+    <div id="admin-guard"></div>
+    <div id="admin-app" hidden>
+      <div id="config-warnings"></div>
+      <div class="stat-row" id="stats"></div>
+      <div id="admin-flash" aria-live="polite"></div>
+
+      <div class="tabs-bar" role="tablist">
+        <button type="button" class="tab active" data-tab="queue">รอตรวจสลิป <span class="count" id="queue-count">0</span></button>
+        <button type="button" class="tab" data-tab="all">การจองทั้งหมด</button>
+        <button type="button" class="tab" data-tab="seats">ที่นั่งแต่ละโซน</button>
+      </div>
+
+      <section id="tab-queue" class="tab-panel">
+        <div class="panel-head">
+          <span class="muted small" id="queue-updated"></span>
+          <button type="button" class="btn btn-outline btn-sm" id="refresh-btn">↻ รีเฟรช</button>
+        </div>
+        <div id="queue-list" class="review-list"></div>
+      </section>
+
+      <section id="tab-all" class="tab-panel" hidden>
+        <div class="panel-head">
+          <select id="status-filter" class="select">
+            <option value="">ทุกสถานะ</option>
+            <option value="pending_review">รอตรวจสอบสลิป</option>
+            <option value="paid">ชำระเงินแล้ว</option>
+            <option value="awaiting_payment">รอชำระเงิน</option>
+            <option value="rejected">สลิปไม่ผ่าน (รอแนบใหม่)</option>
+            <option value="pending">ล็อกที่นั่ง</option>
+            <option value="cancelled">ยกเลิกแล้ว</option>
+            <option value="expired">หมดเวลา</option>
+          </select>
+        </div>
+        <div class="table-wrap"><table class="data-table" id="all-table"></table></div>
+      </section>
+
+      <section id="tab-seats" class="tab-panel" hidden>
+        <div id="seats-content"></div>
+      </section>
+    </div>
+  </main>
+
+  <!-- Modal ปฏิเสธสลิป -->
+  <div id="reject-modal" class="modal-backdrop" hidden>
+    <form class="modal-card" id="reject-form">
+      <h3>ปฏิเสธสลิป <span id="reject-title"></span></h3>
+      <div class="form-group">
+        <label for="reject-reason">เหตุผล (ลูกค้าจะเห็นข้อความนี้)</label>
+        <select id="reject-reason" class="select">
+          <option>ยอดเงินในสลิปไม่ตรงกับยอดที่ต้องชำระ</option>
+          <option>ไม่พบยอดเงินเข้าบัญชี</option>
+          <option>สลิปไม่ชัด อ่านข้อมูลไม่ได้</option>
+          <option>สลิปซ้ำกับรายการอื่น</option>
+          <option>ชื่อบัญชีผู้รับไม่ถูกต้อง</option>
+          <option value="__other">อื่นๆ (ระบุเอง)</option>
+        </select>
+        <input type="text" id="reject-other" maxlength="200" placeholder="ระบุเหตุผล" hidden />
+      </div>
+      <div class="form-group radio-group">
+        <label><input type="radio" name="reject-mode" value="reupload" checked /> ให้ลูกค้าแนบสลิปใหม่ (ภายใน 30 นาที)</label>
+        <label><input type="radio" name="reject-mode" value="cancel" /> ยกเลิกการจองและคืนที่นั่งทันที</label>
+      </div>
+      <div id="reject-error"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-outline" id="reject-cancel">ปิด</button>
+        <button type="submit" class="btn btn-danger" id="reject-submit">ยืนยันปฏิเสธ</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Modal ดูสลิปขนาดใหญ่ -->
+  <div id="slip-modal" class="modal-backdrop" hidden>
+    <div class="slip-viewer">
+      <img id="slip-modal-img" alt="สลิปขนาดใหญ่" />
+      <button type="button" class="btn btn-outline btn-sm" id="slip-modal-close">ปิด</button>
+    </div>
+  </div>
+
+  <script src="../js/common.js"></script>
+  <script src="../js/api.js"></script>
+  <script src="../js/admin.js"></script>
+</body>
+</html>

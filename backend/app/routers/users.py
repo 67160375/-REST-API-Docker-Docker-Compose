@@ -80,8 +80,8 @@ def update_user(
     if data.role is not None:
         if me.role != "admin":
             raise HTTPException(status_code=403, detail="เฉพาะผู้ดูแลระบบเท่านั้นที่เปลี่ยนสิทธิ์ได้")
-        if data.role not in ("customer", "admin"):
-            raise HTTPException(status_code=400, detail="role ต้องเป็น customer หรือ admin")
+        if data.role not in ("customer", "staff", "admin"):
+            raise HTTPException(status_code=400, detail="role ต้องเป็น customer, staff หรือ admin")
         target.role = data.role
 
     db.add(target)

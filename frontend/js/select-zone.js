@@ -1,5 +1,7 @@
 /* ==========================================================
    select-zone.js — หน้าเลือกโซน & จำนวนตั๋ว (/select-zone)
+   - แตะโซนบนภาพผังสนาม หรือเลือกจากรายการ
+   - เปิดด้วย ?mapdebug=1 แล้วคลิกบนภาพ จะบอกพิกัด % (ใช้ตั้งตำแหน่งโซนตอนเปลี่ยนภาพจริง)
    ========================================================== */
 
 const zoneListEl = document.getElementById("zone-list");
@@ -11,118 +13,121 @@ const summaryTotalEl = document.getElementById("summary-total");
 const confirmBtn = document.getElementById("confirm-zone-btn");
 const errorBox = document.getElementById("error-box");
 const backLink = document.getElementById("back-link");
+const mapWrap = document.getElementById("venue-map");
+const mapImg = document.getElementById("venue-map-img");
+const hotspotsEl = document.getElementById("venue-hotspots");
+const mapLegend = document.getElementById("map-legend");
+const mapDebug = document.getElementById("map-debug");
 
 const raceId = getQueryParam("id");
-if (backLink && raceId) {
-  backLink.href = `race-detail.html?id=${raceId}`;
-}
+if (backLink && raceId) backLink.href = `race-detail.html?id=${encodeURIComponent(raceId)}`;
 
 let zones = [];
 let selectedZone = null;
 let quantity = 1;
 
-function renderZones() {
-  if (!zoneListEl) return;
+function selectZone(zoneId) {
+  const zone = zones.find((z) => z.id === zoneId);
+  if (!zone || zone.available_seats <= 0) return;
+  selectedZone = zone;
+  quantity = 1;
+  updateSummary();
+  renderZones();
+  renderHotspots();
+}
 
+function renderHotspots() {
+  const placed = zones.filter((z) => z.map_x != null && z.map_y != null && z.map_w != null && z.map_h != null);
+  hotspotsEl.innerHTML = placed
+    .map((z) => {
+      const soldOut = z.available_seats <= 0;
+      const selected = selectedZone && selectedZone.id === z.id;
+      return `
+        <button type="button"
+          class="hotspot crowd-${esc(z.crowd_level || "low")} ${selected ? "selected" : ""}"
+          style="left:${Number(z.map_x)}%;top:${Number(z.map_y)}%;width:${Number(z.map_w)}%;height:${Number(z.map_h)}%;"
+          data-zone-id="${z.id}" ${soldOut ? "disabled" : ""}
+          title="${esc(z.name)} • ${esc(formatPrice(z.price))} • ${soldOut ? "เต็ม" : `เหลือ ${z.available_seats} ที่`}">
+          <span class="hotspot-label">${esc(z.name)}<small>${esc(formatPrice(z.price))}</small></span>
+        </button>`;
+    })
+    .join("");
+  hotspotsEl.querySelectorAll(".hotspot:not([disabled])").forEach((el) =>
+    el.addEventListener("click", () => selectZone(Number(el.dataset.zoneId)))
+  );
+  if (mapLegend) mapLegend.hidden = placed.length === 0;
+}
+
+function renderZones() {
   zoneListEl.innerHTML = zones
     .map((zone) => {
       const soldOut = zone.available_seats <= 0;
       const isSelected = selectedZone && selectedZone.id === zone.id;
-
-      // 🌐 แปลภาษาจำนวนที่นั่งคงเหลือ
-      const seatsText = soldOut
-        ? t("sold_out")
-        : t("available_seats", { n: zone.available_seats });
-
-      // 🆕 Stand Crowd Status badge — ใช้ crowd_level / crowd_label จาก backend โดยตรง
-      const crowdLevel = zone.crowd_level || "low";
-      const crowdLabel = zone.crowd_label || "";
-      const crowdBadge = crowdLabel
-        ? `<span class="crowd-badge crowd-${crowdLevel}"><span class="crowd-dot"></span>${crowdLabel}</span>`
+      const seatsText = soldOut ? t("sold_out") : t("available_seats", { n: zone.available_seats });
+      const crowdBadge = zone.crowd_label
+        ? `<span class="crowd-badge crowd-${esc(zone.crowd_level || "low")}"><span class="crowd-dot"></span>${esc(zone.crowd_label)}</span>`
         : "";
-
       return `
-        <div class="zone-card ${isSelected ? "selected" : ""} ${soldOut ? "disabled" : ""}" data-zone-id="${zone.id}">
+        <div class="zone-card ${isSelected ? "selected" : ""} ${soldOut ? "disabled" : ""}" data-zone-id="${zone.id}"
+             role="button" tabindex="${soldOut ? -1 : 0}" aria-pressed="${isSelected}">
           <div>
-            <div class="zone-name">${zone.name}</div>
-            <div class="zone-seats">${seatsText}</div>
+            <div class="zone-name">${esc(zone.name)}</div>
+            <div class="zone-seats">${esc(seatsText)}</div>
             ${crowdBadge}
           </div>
           <div class="zone-price">${formatPrice(zone.price)}</div>
-        </div>
-      `;
+        </div>`;
     })
     .join("");
 
   zoneListEl.querySelectorAll(".zone-card:not(.disabled)").forEach((el) => {
-    el.addEventListener("click", () => {
-      const zoneId = Number(el.dataset.zoneId);
-      selectedZone = zones.find((z) => z.id === zoneId);
-      quantity = 1;
-      updateSummary();
-      renderZones();
+    const pick = () => selectZone(Number(el.dataset.zoneId));
+    el.addEventListener("click", pick);
+    el.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        pick();
+      }
     });
   });
 }
 
 function updateSummary() {
   if (!selectedZone) {
-    if (qtySection) qtySection.style.display = "none";
-    if (confirmBtn) confirmBtn.disabled = true;
+    qtySection.style.display = "none";
+    confirmBtn.disabled = true;
     return;
   }
-
   const maxQty = Math.min(selectedZone.available_seats, 10);
-  if (quantity > maxQty) quantity = maxQty;
-  if (quantity < 1) quantity = 1;
+  quantity = Math.max(1, Math.min(quantity, maxQty));
 
-  if (qtySection) qtySection.style.display = "block";
-  if (qtyValueEl) qtyValueEl.textContent = quantity;
-  if (summaryZoneEl) summaryZoneEl.textContent = selectedZone.name;
-  if (summaryPriceEl) summaryPriceEl.textContent = formatPrice(selectedZone.price);
-  if (summaryTotalEl) summaryTotalEl.textContent = formatPrice(selectedZone.price * quantity);
-  if (confirmBtn) confirmBtn.disabled = false;
+  qtySection.style.display = "block";
+  qtyValueEl.textContent = quantity;
+  summaryZoneEl.textContent = selectedZone.name;
+  summaryPriceEl.textContent = formatPrice(selectedZone.price);
+  summaryTotalEl.textContent = formatPrice(selectedZone.price * quantity);
+  confirmBtn.disabled = false;
 }
 
-// ➕➖ ปุ่มเพิ่ม/ลด จำนวนตั๋ว
-const qtyMinusBtn = document.getElementById("qty-minus");
-if (qtyMinusBtn) {
-  qtyMinusBtn.addEventListener("click", () => {
-    if (quantity > 1) {
-      quantity -= 1;
-      updateSummary();
-    }
-  });
-}
-
-const qtyPlusBtn = document.getElementById("qty-plus");
-if (qtyPlusBtn) {
-  qtyPlusBtn.addEventListener("click", () => {
-    quantity += 1;
-    updateSummary();
-  });
-}
+document.getElementById("qty-minus").addEventListener("click", () => {
+  quantity -= 1;
+  updateSummary();
+});
+document.getElementById("qty-plus").addEventListener("click", () => {
+  quantity += 1;
+  updateSummary();
+});
 
 // ===== จำสิ่งที่เลือกไว้ ตอนต้องล็อกอินก่อนจอง =====
 const PENDING_KEY = "grid_pass_pending_booking";
-const PENDING_TTL_MS = 30 * 60 * 1000; // เก็บไว้ไม่เกิน 30 นาที
-
-function hasToken() {
-  const tk = localStorage.getItem("token");
-  return !!tk && tk !== "null" && tk !== "undefined" && tk.trim() !== "";
-}
+const PENDING_TTL_MS = 30 * 60 * 1000;
 
 function savePendingSelection() {
   if (!selectedZone) return;
   try {
     sessionStorage.setItem(
       PENDING_KEY,
-      JSON.stringify({
-        raceId: Number(raceId),
-        zoneId: selectedZone.id,
-        quantity: quantity,
-        savedAt: Date.now(),
-      })
+      JSON.stringify({ raceId: Number(raceId), zoneId: selectedZone.id, quantity, savedAt: Date.now() })
     );
   } catch (e) {}
 }
@@ -140,21 +145,16 @@ function takePendingSelection() {
   }
 }
 
-// ล็อกอินเสร็จให้กลับมาหน้านี้พร้อม resume=1 เพื่อไปต่ออัตโนมัติ
 function loginRedirectUrl() {
-  const next = `${window.location.pathname}?id=${raceId}&resume=1`;
-  return `/pages/auth.html?next=${encodeURIComponent(next)}`;
+  return loginUrl(`${window.location.pathname}?id=${encodeURIComponent(raceId)}&resume=1`);
 }
 
-// 🔘 จองตั๋ว (ถ้ายังไม่ล็อกอิน: จำที่เลือกไว้ แล้วพาไปล็อกอิน)
 async function submitBooking() {
   if (!selectedZone) {
-    const alertMsg = getCurrentLang() === "en" ? "Please select a zone first." : "กรุณาเลือกโซนที่นั่งก่อนครับ";
-    alert(alertMsg);
+    showError(errorBox, getCurrentLang() === "en" ? "Please select a zone first." : "กรุณาเลือกโซนที่นั่งก่อน");
     return;
   }
-
-  if (!hasToken()) {
+  if (!getToken()) {
     savePendingSelection();
     requireAuth(loginRedirectUrl());
     return;
@@ -162,71 +162,95 @@ async function submitBooking() {
 
   confirmBtn.disabled = true;
   confirmBtn.textContent = t("locking_seats");
-  if (errorBox) errorBox.innerHTML = "";
+  errorBox.innerHTML = "";
 
   try {
     const booking = await BookingAPI.create(Number(raceId), selectedZone.id, quantity);
-    saveState({
-      raceId: Number(raceId),
-      bookingId: booking.id,
-      zone: selectedZone,
-      quantity: quantity
-    });
-    window.location.href = `checkout.html?booking_id=${booking.id}`;
+    saveState({ raceId: Number(raceId), bookingId: booking.id });
+    window.location.href = `checkout.html?booking_id=${encodeURIComponent(booking.id)}`;
   } catch (err) {
     confirmBtn.disabled = false;
     confirmBtn.textContent = t("confirm_zone_btn");
     if (err.status === 401) {
-      // token หมดอายุ/ใช้ไม่ได้ (api.js ล้างให้แล้ว) -> จำที่เลือกไว้ แล้วให้ล็อกอินใหม่
       savePendingSelection();
       requireAuth(loginRedirectUrl());
       return;
     }
-    showError(errorBox || zoneListEl, err.message);
+    showError(errorBox, err.message);
+    loadZones(false); // ดึงที่นั่งล่าสุด เผื่อมีคนจองตัดหน้า
   }
 }
 
-if (confirmBtn) {
-  confirmBtn.addEventListener("click", submitBooking);
-}
+confirmBtn.addEventListener("click", submitBooking);
 
 // กลับมาจากหน้าล็อกอิน (?resume=1): คืนค่าที่เลือกไว้ แล้วไปต่อขั้นจองให้เลย
 function resumePendingBooking() {
   if (getQueryParam("resume") !== "1") return;
-  history.replaceState(null, "", `select-zone.html?id=${raceId}`); // กันทำซ้ำตอนรีเฟรช
+  history.replaceState(null, "", `select-zone.html?id=${encodeURIComponent(raceId)}`);
 
   const p = takePendingSelection();
-  if (!p || !hasToken()) return;
+  if (!p || !getToken()) return;
 
   const zone = zones.find((z) => z.id === p.zoneId);
-  const box = errorBox || zoneListEl;
   if (!zone || zone.available_seats < 1) {
-    showError(box, "โซนที่คุณเลือกไว้ที่นั่งหมดแล้ว กรุณาเลือกโซนใหม่");
+    showError(errorBox, "โซนที่คุณเลือกไว้ที่นั่งหมดแล้ว กรุณาเลือกโซนใหม่");
     return;
   }
-
   selectedZone = zone;
   quantity = Math.min(p.quantity, zone.available_seats, 10);
   updateSummary();
   renderZones();
+  renderHotspots();
 
   if (quantity < p.quantity) {
-    // ที่นั่งเหลือน้อยกว่าที่เลือกไว้ ไม่จองให้เอง ให้ผู้ใช้ตรวจจำนวนก่อน
-    showError(box, `ที่นั่งเหลือไม่พอตามที่เลือกไว้ ปรับเป็น ${quantity} ใบ กรุณาตรวจสอบแล้วกดจองอีกครั้ง`);
+    showError(errorBox, `ที่นั่งเหลือไม่พอตามที่เลือกไว้ ปรับเป็น ${quantity} ใบ กรุณาตรวจสอบแล้วกดจองอีกครั้ง`);
     return;
   }
   submitBooking();
 }
 
-async function loadZones() {
+function setupMap(race) {
+  if (!race || !race.venue_map_url) return;
+  mapImg.src = race.venue_map_url;
+  mapWrap.hidden = false;
+
+  if (getQueryParam("mapdebug") === "1") {
+    mapDebug.hidden = false;
+    mapDebug.textContent = "โหมดหาพิกัด: คลิกมุมซ้ายบน แล้วมุมขวาล่างของอัฒจันทร์";
+    let first = null;
+    mapWrap.addEventListener("click", (e) => {
+      const rect = mapWrap.getBoundingClientRect();
+      const x = +(((e.clientX - rect.left) / rect.width) * 100).toFixed(1);
+      const y = +(((e.clientY - rect.top) / rect.height) * 100).toFixed(1);
+      if (!first) {
+        first = { x, y };
+        mapDebug.textContent = `มุมซ้ายบน: x=${x}%, y=${y}% — คลิกมุมขวาล่างต่อ`;
+      } else {
+        const w = +(x - first.x).toFixed(1), h = +(y - first.y).toFixed(1);
+        mapDebug.textContent = `map_x=${first.x}, map_y=${first.y}, map_w=${w}, map_h=${h}  → (${first.x}, ${first.y}, ${w}, ${h})`;
+        first = null;
+      }
+    }, true);
+  }
+}
+
+async function loadZones(withRace = true) {
   if (!raceId) {
     showError(zoneListEl, t("err_no_race_id"));
     return;
   }
   try {
-    zones = await RaceAPI.getZones(raceId);
+    const [race, zoneData] = await Promise.all([withRace ? RaceAPI.getRace(raceId) : null, RaceAPI.getZones(raceId)]);
+    zones = zoneData;
+    if (race) {
+      document.getElementById("race-subtitle").textContent = `${race.name} • ${race.race_date} — แตะโซนบนผังสนาม หรือเลือกจากรายการด้านล่าง`;
+      setupMap(race);
+    }
+    if (selectedZone) selectedZone = zones.find((z) => z.id === selectedZone.id && z.available_seats > 0) || null;
     renderZones();
-    resumePendingBooking();
+    renderHotspots();
+    updateSummary();
+    if (withRace) resumePendingBooking();
   } catch (err) {
     showError(zoneListEl, err.message);
   }

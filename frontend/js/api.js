@@ -6,18 +6,38 @@
 
 const API_BASE = ""; // ใช้ path สัมพัทธ์ เพราะ frontend ถูก serve จาก FastAPI ตัวเดียวกัน
 
+// แปลง error ของ FastAPI ให้เป็นข้อความอ่านง่าย (422 จะส่ง detail มาเป็น list)
+function _errorDetail(data, status) {
+  if (!data || data.detail === undefined) return `เกิดข้อผิดพลาด (HTTP ${status})`;
+  if (typeof data.detail === "string") return data.detail;
+  if (Array.isArray(data.detail)) {
+    return data.detail
+      .map((d) => String(d.msg || "").replace(/^Value error,\s*/i, ""))
+      .filter(Boolean)
+      .join(" / ") || "ข้อมูลไม่ถูกต้อง";
+  }
+  return `เกิดข้อผิดพลาด (HTTP ${status})`;
+}
+
 async function apiRequest(path, options = {}) {
-  const headers = { "Content-Type": "application/json", ...(options.headers || {}) };
+  const isForm = options.body instanceof FormData;
+  const headers = { ...(isForm ? {} : { "Content-Type": "application/json" }), ...(options.headers || {}) };
   const token = localStorage.getItem("token");
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
-  const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
+  let res;
+  try {
+    res = await fetch(`${API_BASE}${path}`, { ...options, headers });
+  } catch (e) {
+    const err = new Error("เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ กรุณาตรวจสอบอินเทอร์เน็ตแล้วลองใหม่");
+    err.status = 0;
+    throw err;
+  }
 
   if (!res.ok) {
-    let detail = `เกิดข้อผิดพลาด (HTTP ${res.status})`;
+    let data = null;
     try {
-      const data = await res.json();
-      if (data.detail) detail = data.detail;
+      data = await res.json();
     } catch (e) {
       /* ไม่มี JSON body ก็ใช้ข้อความ default ไป */
     }
@@ -26,12 +46,13 @@ async function apiRequest(path, options = {}) {
       localStorage.removeItem("token");
       localStorage.removeItem("user");
     }
-    const err = new Error(detail);
+    const err = new Error(_errorDetail(data, res.status));
     err.status = res.status;
     throw err;
   }
 
-  return res.json();
+  const type = res.headers.get("content-type") || "";
+  return type.includes("application/json") ? res.json() : res.blob();
 }
 
 const RaceAPI = {
@@ -40,10 +61,13 @@ const RaceAPI = {
     return apiRequest(`/api/races${query}`);
   },
   getRace(raceId) {
-    return apiRequest(`/api/races/${raceId}`);
+    return apiRequest(`/api/races/${encodeURIComponent(raceId)}`);
   },
   getZones(raceId) {
-    return apiRequest(`/api/races/${raceId}/zones`);
+    return apiRequest(`/api/races/${encodeURIComponent(raceId)}/zones`);
+  },
+  allSchedules() {
+    return apiRequest(`/api/schedule`);
   },
 };
 
@@ -54,26 +78,66 @@ const BookingAPI = {
       body: JSON.stringify({ race_id: raceId, zone_id: zoneId, quantity }),
     });
   },
+  mine() {
+    return apiRequest(`/api/bookings/mine`);
+  },
   get(bookingId) {
-    return apiRequest(`/api/bookings/${bookingId}`);
+    return apiRequest(`/api/bookings/${encodeURIComponent(bookingId)}`);
   },
-  submitCheckout(bookingId, buyerName, buyerPhone, paymentMethod) {
-    return apiRequest(`/api/bookings/${bookingId}/checkout`, {
+  submitCheckout(bookingId, buyerName, buyerPhone) {
+    return apiRequest(`/api/bookings/${encodeURIComponent(bookingId)}/checkout`, {
       method: "POST",
-      body: JSON.stringify({
-        buyer_name: buyerName,
-        buyer_phone: buyerPhone,
-        payment_method: paymentMethod,
-      }),
+      body: JSON.stringify({ buyer_name: buyerName, buyer_phone: buyerPhone, payment_method: "promptpay" }),
     });
   },
-  pay(bookingId, paymentMethod) {
-    return apiRequest(`/api/bookings/${bookingId}/payment`, {
-      method: "POST",
-      body: JSON.stringify({ payment_method: paymentMethod }),
-    });
+  paymentInfo(bookingId) {
+    return apiRequest(`/api/bookings/${encodeURIComponent(bookingId)}/payment-info`);
+  },
+  uploadSlip(bookingId, file) {
+    const form = new FormData();
+    form.append("file", file);
+    return apiRequest(`/api/bookings/${encodeURIComponent(bookingId)}/slip`, { method: "POST", body: form });
   },
   getTicket(bookingId) {
-    return apiRequest(`/api/bookings/${bookingId}/ticket`);
+    return apiRequest(`/api/bookings/${encodeURIComponent(bookingId)}/ticket`);
+  },
+  cancel(bookingId) {
+    return apiRequest(`/api/bookings/${encodeURIComponent(bookingId)}/cancel`, { method: "POST" });
+  },
+};
+
+const AdminAPI = {
+  summary() {
+    return apiRequest(`/api/admin/summary`);
+  },
+  list(status) {
+    return apiRequest(`/api/admin/bookings?status=${encodeURIComponent(status || "")}`);
+  },
+  slip(bookingId) {
+    return apiRequest(`/api/admin/bookings/${encodeURIComponent(bookingId)}/slip`); // คืนเป็น Blob
+  },
+  approve(bookingId) {
+    return apiRequest(`/api/admin/bookings/${encodeURIComponent(bookingId)}/approve`, { method: "POST" });
+  },
+  reject(bookingId, reason, allowReupload) {
+    return apiRequest(`/api/admin/bookings/${encodeURIComponent(bookingId)}/reject`, {
+      method: "POST",
+      body: JSON.stringify({ reason, allow_reupload: allowReupload }),
+    });
+  },
+  cancel(bookingId) {
+    return apiRequest(`/api/admin/bookings/${encodeURIComponent(bookingId)}/cancel`, { method: "POST" });
+  },
+};
+
+const CheckInAPI = {
+  scan(code, force = false) {
+    return apiRequest(`/api/checkin`, { method: "POST", body: JSON.stringify({ code, force }) });
+  },
+};
+
+const UserAPI = {
+  me() {
+    return apiRequest(`/api/v1/users/me`);
   },
 };

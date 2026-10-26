@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ตารางการแข่ง | Grid Pass</title>
+  <link rel="stylesheet" href="../css/style.css" />
+</head>
+<body>
+  <main class="page-container">
+    <h1 class="page-title" data-i18n="schedule">ตารางการแข่ง</h1>
+    <p class="page-subtitle">แต่ละวันแข่งช่วงเวลาไหน มีรถประเภทอะไรลงแข่งบ้าง</p>
+
+    <div id="filter-bar" class="chip-bar"></div>
+    <div id="schedule-content">
+      <div class="skeleton">กำลังโหลดตารางการแข่ง...</div>
+    </div>
+  </main>
+
+  <script src="../js/common.js"></script>
+  <script src="../js/api.js"></script>
+  <script src="../js/schedule-view.js"></script>
+  <script src="../js/schedule.js"></script>
+</body>
+</html>

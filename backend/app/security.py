@@ -95,3 +95,10 @@ def require_admin(user: User = Depends(get_current_user)) -> User:
     if user.role != "admin":
         raise HTTPException(status_code=403, detail="เฉพาะผู้ดูแลระบบเท่านั้น")
     return user
+
+
+def require_staff(user: User = Depends(get_current_user)) -> User:
+    """พนักงานสแกนตั๋วหน้างาน (admin ใช้ได้ด้วย)"""
+    if user.role not in ("staff", "admin"):
+        raise HTTPException(status_code=403, detail="เฉพาะพนักงานหน้างานหรือผู้ดูแลระบบเท่านั้น")
+    return user

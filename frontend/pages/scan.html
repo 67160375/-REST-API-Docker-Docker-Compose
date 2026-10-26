@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>สแกนตั๋วเข้างาน | Grid Pass</title>
+  <link rel="stylesheet" href="../css/style.css" />
+</head>
+<body>
+  <main class="page-container narrow">
+    <h1 class="page-title">สแกนตั๋วเข้างาน</h1>
+    <p class="page-subtitle">สำหรับพนักงานหน้าประตู — สแกน QR บน e-Ticket ของผู้เข้าชม</p>
+
+    <div id="scan-guard"></div>
+    <div id="scan-app" hidden>
+      <div class="scanner">
+        <video id="scan-video" playsinline muted hidden></video>
+        <canvas id="scan-canvas" hidden></canvas>
+        <div id="scan-idle" class="scanner-idle">
+          <button type="button" class="btn btn-primary" id="start-camera">📷 เปิดกล้องสแกน</button>
+          <p class="muted small">ต้องเปิดผ่าน https หรือ localhost กล้องถึงจะทำงาน</p>
+        </div>
+        <div class="scan-frame" id="scan-frame" hidden></div>
+      </div>
+
+      <form id="manual-form" class="manual-form">
+        <input type="text" id="manual-code" placeholder="หรือพิมพ์รหัสตั๋ว เช่น TIX-000123" autocomplete="off" />
+        <button type="submit" class="btn btn-outline">ตรวจ</button>
+      </form>
+
+      <div id="scan-result" aria-live="polite"></div>
+    </div>
+  </main>
+
+  <script src="../js/vendor/jsQR.js"></script>
+  <script src="../js/common.js"></script>
+  <script src="../js/api.js"></script>
+  <script src="../js/scan.js"></script>
+</body>
+</html>

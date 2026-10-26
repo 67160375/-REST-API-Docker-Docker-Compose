@@ -11,6 +11,10 @@ const translations = {
   th: {
     // Header & Navigation & Footer
     races: "รายการแข่งขัน",
+    schedule: "ตารางการแข่ง",
+    my_tickets: "ตั๋วของฉัน",
+    admin: "แอดมิน",
+    scan: "สแกนตั๋ว",
     login_btn: "เข้าสู่ระบบ / สมัครสมาชิก",
     welcome: "ยินดีต้อนรับ",
     account: "จัดการบัญชี",
@@ -100,6 +104,10 @@ const translations = {
   en: {
     // Header & Navigation & Footer
     races: "Races",
+    schedule: "Schedule",
+    my_tickets: "My Tickets",
+    admin: "Admin",
+    scan: "Scan Tickets",
     login_btn: "Login / Register",
     welcome: "Welcome",
     account: "Account",
@@ -201,101 +209,134 @@ function t(key, params = {}) {
   return text;
 }
 
-window.toggleLanguage = function() {
+window.toggleLanguage = function () {
   const current = getCurrentLang();
-  const nextLang = current === "th" ? "en" : "th";
-  localStorage.setItem("app_lang", nextLang);
+  localStorage.setItem("app_lang", current === "th" ? "en" : "th");
   window.location.reload();
 };
+
+/* ==========================================================
+   🛡️ กันการแทรก HTML/สคริปต์ (XSS)
+   ข้อมูลทุกอย่างที่มาจากผู้ใช้หรือ API ต้องผ่าน esc() ก่อนใส่ลง innerHTML
+   ========================================================== */
+function esc(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
 
 /* ==========================================================
    🌐 ฟังก์ชันกวาดแปลภาษาอัตโนมัติทั้ง DOM (รองรับ text, placeholder, value)
    ========================================================== */
 function applyTranslations() {
   document.querySelectorAll("[data-i18n]").forEach((el) => {
-    const key = el.getAttribute("data-i18n");
-    el.textContent = t(key);
+    el.textContent = t(el.getAttribute("data-i18n"));
   });
   document.querySelectorAll("[data-i18n-placeholder]").forEach((el) => {
-    const key = el.getAttribute("data-i18n-placeholder");
-    el.placeholder = t(key);
+    el.placeholder = t(el.getAttribute("data-i18n-placeholder"));
   });
   document.querySelectorAll("[data-i18n-value]").forEach((el) => {
-    const key = el.getAttribute("data-i18n-value");
-    el.value = t(key);
+    el.value = t(el.getAttribute("data-i18n-value"));
   });
+}
+
+/* ==========================================================
+   ผู้ใช้ที่ล็อกอินอยู่
+   ========================================================== */
+function getToken() {
+  const tk = localStorage.getItem("token");
+  return tk && tk !== "null" && tk !== "undefined" && tk.trim() !== "" ? tk : null;
+}
+
+function getUser() {
+  try {
+    return JSON.parse(localStorage.getItem("user")) || null;
+  } catch (e) {
+    return null;
+  }
+}
+
+function currentPathWithQuery() {
+  return window.location.pathname + window.location.search;
+}
+
+function loginUrl(next = currentPathWithQuery()) {
+  return `/pages/auth.html?next=${encodeURIComponent(next)}`;
 }
 
 /* ==========================================================
    Header & Footer
    ========================================================== */
-function renderHeader(activeHref = "") {
+function renderHeader() {
+  document.querySelector("header.site-header")?.remove();
   const header = document.createElement("header");
   header.className = "site-header";
-  
-  const token = localStorage.getItem('token');
-  const userStr = localStorage.getItem('user');
-  let authHtml = '';
 
-  const isLoggedIn = token && token !== "null" && token !== "undefined" && token.trim() !== "";
-  const currentLangDisplay = getCurrentLang().toUpperCase();
+  const user = getToken() ? getUser() : null;
+  const path = window.location.pathname;
+  const link = (href, label) =>
+    `<a href="${href}" class="nav-link ${path === href ? "active" : ""}">${esc(label)}</a>`;
 
-  if (isLoggedIn && userStr) {
-      try {
-        const user = JSON.parse(userStr);
-        authHtml = `
-          <div style="display: inline-flex; align-items: center; gap: 15px; font-size: 14px;">
-            <span style="color: white;">${t('welcome')}, <strong>${user.username}</strong></span>
-            <a href="/pages/auth.html" style="color: white; text-decoration: underline;">${t('account')}</a>
-            <button onclick="handleMainLogout()" style="padding: 6px 12px; background: #d32f2f; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">${t('logout')}</button>
-          </div>
-        `;
-      } catch(e) {
-        authHtml = `<a href="/pages/auth.html" style="padding: 8px 16px; background: #e50914; color: white; text-decoration: none; border-radius: 4px; font-weight: bold;">${t('login_btn')}</a>`;
-      }
-  } else {
-      authHtml = `
-        <a href="/pages/auth.html" style="padding: 8px 16px; background: #e50914; color: white; text-decoration: none; border-radius: 4px; font-weight: bold;">${t('login_btn')}</a>
-      `;
-  }
+  let roleLinks = "";
+  if (user && user.role === "admin") roleLinks += link("/pages/admin.html", t("admin"));
+  if (user && (user.role === "admin" || user.role === "staff")) roleLinks += link("/pages/scan.html", t("scan"));
+
+  const authHtml = user
+    ? `<span class="nav-user">${esc(t("welcome"))}, <strong>${esc(user.username)}</strong></span>
+       <a href="/pages/auth.html" class="nav-link">${esc(t("account"))}</a>
+       <button type="button" class="nav-btn" onclick="handleMainLogout()">${esc(t("logout"))}</button>`
+    : `<a href="${loginUrl()}" class="nav-btn nav-btn-primary">${esc(t("login_btn"))}</a>`;
 
   header.innerHTML = `
-    <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; max-width: 1200px; margin: 0 auto; padding: 10px 20px; flex-wrap: wrap;">
-        <a href="/pages/races.html" class="logo" style="text-decoration: none; font-size: 20px; font-weight: bold; color: white;">
-          <span class="flag">🏁</span> Grid Pass
-        </a>
-        <nav style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
-          <a href="/pages/races.html" style="text-decoration: none; color: white; font-weight: bold;">${t('races')}</a>
-          ${authHtml}
-          <button onclick="toggleLanguage()" style="
-            background: #e50914; color: #fff; border: 1px solid #fff; 
-            padding: 5px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 13px;
-          ">🌐 ${currentLangDisplay}</button>
-        </nav>
+    <div class="header-inner">
+      <a href="/pages/races.html" class="logo"><span class="flag">🏁</span> Grid Pass</a>
+      <nav class="site-nav">
+        ${link("/pages/races.html", t("races"))}
+        ${link("/pages/schedule.html", t("schedule"))}
+        ${user ? link("/pages/my-tickets.html", t("my_tickets")) : ""}
+        ${roleLinks}
+        ${authHtml}
+        <button type="button" class="nav-btn" onclick="toggleLanguage()">🌐 ${getCurrentLang().toUpperCase()}</button>
+      </nav>
     </div>
   `;
   document.body.prepend(header);
 }
 
-window.handleMainLogout = function() {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    window.location.reload(); 
+window.handleMainLogout = function () {
+  localStorage.removeItem("token");
+  localStorage.removeItem("user");
+  window.location.href = "/pages/races.html";
 };
 
 function renderFooter() {
   const footer = document.createElement("footer");
   footer.className = "site-footer";
-  footer.innerHTML = `&copy; 2026 ${t('footer')}`;
+  footer.innerHTML = `&copy; 2026 ${esc(t("footer"))}`;
   document.body.appendChild(footer);
+}
+
+// ดึงสิทธิ์ล่าสุดจาก server (เช่น เพิ่งถูกตั้งเป็น admin) แล้ววาด header ใหม่ถ้าเปลี่ยน
+async function refreshCurrentUser() {
+  if (!getToken() || typeof UserAPI === "undefined") return;
+  try {
+    const me = await UserAPI.me();
+    const old = getUser() || {};
+    localStorage.setItem("user", JSON.stringify(me));
+    if (old.role !== me.role || old.username !== me.username) renderHeader();
+  } catch (e) {
+    if (e.status === 401) renderHeader(); // token หมดอายุ (api.js ล้างให้แล้ว)
+  }
 }
 
 /* ==========================================================
    State & Utility Functions
    ========================================================== */
 function saveState(partial) {
-  const current = getState();
-  const next = { ...current, ...partial };
+  const next = { ...getState(), ...partial };
   localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
   return next;
 }
@@ -315,7 +356,7 @@ function clearState() {
 function formatPrice(number) {
   const lang = getCurrentLang();
   const formattedNum = Number(number).toLocaleString(lang === "th" ? "th-TH" : "en-US");
-  return `${formattedNum} ${t('currency')}`;
+  return `${formattedNum} ${t("currency")}`;
 }
 
 function getQueryParam(name) {
@@ -324,65 +365,123 @@ function getQueryParam(name) {
 
 function showError(container, message) {
   if (container) {
-    container.innerHTML = `<div class="alert alert-error">⚠️ ${message}</div>`;
+    container.innerHTML = `<div class="alert alert-error">⚠️ ${esc(message)}</div>`;
   }
+}
+
+function showNotice(container, message, kind = "warning") {
+  if (container) {
+    container.innerHTML = `<div class="alert alert-${kind}">${esc(message)}</div>`;
+  }
+}
+
+// ป้ายสถานะการจอง (สีตามสถานะ)
+function statusBadge(status, label) {
+  return `<span class="status-badge status-${esc(status)}">${esc(label || status)}</span>`;
+}
+
+/* ==========================================================
+   ⏱️ นับเวลาถอยหลัง (ใช้ seconds_left ที่ server คำนวณมาให้ ไม่พึ่งนาฬิกาเครื่องลูกค้า)
+   ========================================================== */
+function formatCountdown(totalSeconds) {
+  const s = Math.max(0, Math.floor(totalSeconds));
+  const m = Math.floor(s / 60);
+  return `${String(m).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
+}
+
+function startCountdown(el, seconds, onExpire) {
+  if (!el || seconds == null) return null;
+  const endAt = Date.now() + seconds * 1000;
+  const tick = () => {
+    const left = Math.round((endAt - Date.now()) / 1000);
+    el.innerHTML = `⏱️ เหลือเวลา <strong>${formatCountdown(left)}</strong> นาที`;
+    el.classList.toggle("urgent", left <= 60);
+    if (left <= 0) {
+      clearInterval(timer);
+      if (onExpire) onExpire();
+    }
+  };
+  const timer = setInterval(tick, 1000);
+  tick();
+  return timer;
+}
+
+/* ==========================================================
+   🔳 QR Code (ใช้ไลบรารี vendor/qrcode-generator.js)
+   ========================================================== */
+function qrSvg(text, { cellSize = 5, margin = 2 } = {}) {
+  if (typeof qrcode !== "function") return `<div class="alert alert-error">โหลดตัวสร้าง QR ไม่สำเร็จ</div>`;
+  const qr = qrcode(0, "M");
+  qr.addData(text);
+  qr.make();
+  return qr.createSvgTag({ cellSize, margin, scalable: true });
+}
+
+// บันทึก QR เป็นไฟล์ PNG พร้อมข้อความใต้ภาพ (ลูกค้าเปิดจากแกลเลอรีในแอปธนาคารได้)
+function downloadQrPng(text, filename, captionLines = []) {
+  const qr = qrcode(0, "M");
+  qr.addData(text);
+  qr.make();
+  const count = qr.getModuleCount();
+  const cell = 10, margin = 4 * cell, qrSize = count * cell;
+  const lineH = 34;
+  const canvas = document.createElement("canvas");
+  canvas.width = qrSize + margin * 2;
+  canvas.height = qrSize + margin * 2 + captionLines.length * lineH + (captionLines.length ? 16 : 0);
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = "#1c1c1c";
+  for (let r = 0; r < count; r++) {
+    for (let c = 0; c < count; c++) {
+      if (qr.isDark(r, c)) ctx.fillRect(margin + c * cell, margin + r * cell, cell, cell);
+    }
+  }
+  ctx.textAlign = "center";
+  captionLines.forEach((line, i) => {
+    ctx.font = `${i === 0 ? "bold " : ""}26px 'Noto Sans Thai', sans-serif`;
+    ctx.fillText(line, canvas.width / 2, qrSize + margin * 2 + i * lineH + 10);
+  });
+  canvas.toBlob((blob) => {
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      URL.revokeObjectURL(a.href);
+      a.remove();
+    }, 1000);
+  }, "image/png");
 }
 
 /* ==========================================================
    🔒 Authentication Check (Modal เตือนธีมสีแดง Grid Pass)
    ========================================================== */
-function requireAuth(redirectUrl = "/pages/auth.html") {
-  const token = localStorage.getItem("token");
+function requireAuth(redirectUrl = loginUrl()) {
+  if (getToken()) return true;
 
-  if (token && token !== "null" && token !== "undefined" && token.trim() !== "") {
-    return true;
-  }
-
-  const existingModal = document.getElementById("auth-modal");
-  if (existingModal) {
-    existingModal.remove();
-  }
-
+  document.getElementById("auth-modal")?.remove();
   const modal = document.createElement("div");
   modal.id = "auth-modal";
   modal.innerHTML = `
-    <div style="
-      position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-      background: rgba(0, 0, 0, 0.85); display: flex; align-items: center;
-      justify-content: center; z-index: 999999; backdrop-filter: blur(5px);
-    ">
-      <div style="
-        background: #181818; border: 2px solid #e50914; border-radius: 12px;
-        padding: 30px; max-width: 400px; width: 90%; text-align: center;
-        box-shadow: 0 0 25px rgba(229, 9, 20, 0.5); color: #fff; font-family: sans-serif;
-      ">
+    <div class="modal-backdrop">
+      <div class="modal-card modal-dark">
         <div style="font-size: 45px; margin-bottom: 10px;">🏁</div>
-        <h3 style="color: #e50914; margin: 0 0 10px 0; font-size: 1.5rem; letter-spacing: 1px;">${t('auth_title')}</h3>
-        <p style="color: #ccc; margin: 0 0 25px 0; font-size: 0.95rem; line-height: 1.4;">
-          ${t('auth_desc')}
-        </p>
-        <div style="display: flex; gap: 10px;">
-          <button id="auth-cancel-btn" style="
-            background: #333; color: #fff; border: 1px solid #555; padding: 10px 15px;
-            border-radius: 6px; font-weight: bold; cursor: pointer; flex: 1;
-          ">${t('cancel')}</button>
-          <button id="auth-login-btn" style="
-            background: #e50914; color: #fff; border: none; padding: 10px 15px;
-            border-radius: 6px; font-weight: bold; cursor: pointer; flex: 1;
-          ">${t('go_to_login')}</button>
+        <h3>${esc(t("auth_title"))}</h3>
+        <p>${esc(t("auth_desc"))}</p>
+        <div class="modal-actions">
+          <button id="auth-cancel-btn" class="btn btn-dark">${esc(t("cancel"))}</button>
+          <button id="auth-login-btn" class="btn btn-red">${esc(t("go_to_login"))}</button>
         </div>
       </div>
     </div>
   `;
   document.body.appendChild(modal);
-
-  document.getElementById("auth-cancel-btn").onclick = () => {
-    modal.remove();
-  };
+  document.getElementById("auth-cancel-btn").onclick = () => modal.remove();
   document.getElementById("auth-login-btn").onclick = () => {
     window.location.href = redirectUrl;
   };
-
   return false;
 }
 
@@ -393,4 +492,5 @@ document.addEventListener("DOMContentLoaded", () => {
   renderHeader();
   renderFooter();
   applyTranslations();
+  refreshCurrentUser();
 });

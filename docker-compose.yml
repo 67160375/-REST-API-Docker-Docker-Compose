@@ -7,9 +7,12 @@ services:
       dockerfile: backend/Dockerfile
     ports:
       - "8000:8000"
+    # dev: แก้โค้ดแล้ว server รีสตาร์ทเอง
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
     volumes:
       - ./backend/app:/app/app       # แก้โค้ด backend ฝั่งเครื่อง เห็นผลทันที (ไม่ต้อง build ใหม่)
       - ./frontend:/app/frontend     # FastAPI serve ไฟล์ frontend จากโฟลเดอร์นี้
+      - slip_uploads:/app/uploads    # รูปสลิปโอนเงิน (ไม่หายตอนลบ/สร้าง container ใหม่)
     env_file: .env
     depends_on:
       - db
@@ -35,3 +38,4 @@ services:
 
 volumes:
   db_data:
+  slip_uploads:

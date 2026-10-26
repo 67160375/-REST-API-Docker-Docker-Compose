@@ -20,7 +20,18 @@
     <a href="#" id="back-link" class="btn-back">← กลับไปหน้ารายละเอียด</a>
 
     <h1 class="page-title">เลือกโซน & จำนวนตั๋ว</h1>
-    <p class="page-subtitle">แสดงผังโซน ตั๋วคงเหลือแบบ real-time พร้อมคำนวณราคารวม</p>
+    <p class="page-subtitle" id="race-subtitle">แตะโซนบนผังสนาม หรือเลือกจากรายการด้านล่าง</p>
+
+    <div id="venue-map" class="venue-map" hidden>
+      <img id="venue-map-img" alt="ผังสนามและจุดชมการแข่ง" />
+      <div id="venue-hotspots"></div>
+      <div id="map-debug" class="map-debug" hidden></div>
+    </div>
+    <div class="map-legend" id="map-legend" hidden>
+      <span><i class="dot crowd-low-dot"></i>ว่างเยอะ</span>
+      <span><i class="dot crowd-medium-dot"></i>ใกล้เต็ม</span>
+      <span><i class="dot crowd-full-dot"></i>เต็ม</span>
+    </div>
 
     <div id="zone-list" class="zone-list">
       <div class="skeleton">กำลังโหลดโซนที่นั่ง...</div>
@@ -29,9 +40,10 @@
     <div id="qty-section" style="display:none;">
       <div class="qty-control">
         <span style="font-weight:700;">จำนวนตั๋ว</span>
-        <button id="qty-minus">−</button>
+        <button id="qty-minus" type="button" aria-label="ลดจำนวน">−</button>
         <span class="qty-value" id="qty-value">1</span>
-        <button id="qty-plus">+</button>
+        <button id="qty-plus" type="button" aria-label="เพิ่มจำนวน">+</button>
+        <span class="muted">(สูงสุด 10 ใบ/ครั้ง)</span>
       </div>
 
       <div class="summary-box">
@@ -39,6 +51,7 @@
         <div class="row"><span>ราคาต่อใบ</span><span id="summary-price">-</span></div>
         <div class="total-row"><span>ราคารวม</span><span id="summary-total">-</span></div>
       </div>
+      <p class="muted small">กดล็อกแล้ว ระบบจะกันที่นั่งไว้ให้ 10 นาที เพื่อกรอกข้อมูลและชำระเงิน</p>
     </div>
 
     <div id="error-box"></div>

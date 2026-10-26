@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>รับ e-Ticket | Grid Pass</title>
+  <title>e-Ticket | Grid Pass</title>
   <link rel="stylesheet" href="../css/style.css" />
 </head>
 <body>
-  <main class="page-container">
+  <main class="page-container narrow">
     <div class="step-track">
       <span class="step done">1. ค้นหารายการแข่ง</span>
       <span class="step done">2. ดูรายละเอียด</span>
@@ -18,10 +18,11 @@
     </div>
 
     <div id="ticket-content">
-      <div class="skeleton">กำลังออก e-Ticket...</div>
+      <div class="skeleton">กำลังโหลด...</div>
     </div>
   </main>
 
+  <script src="../js/vendor/qrcode-generator.js"></script>
   <script src="../js/common.js"></script>
   <script src="../js/api.js"></script>
   <script src="../js/ticket-success.js"></script>
