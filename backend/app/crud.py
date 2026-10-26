@@ -17,7 +17,7 @@ from sqlalchemy import func
 from sqlmodel import Session, col, delete, select
 
 from app import config
-from app.models import Booking, Race, ScheduleItem, Ticket, User, Zone
+from app.models import Booking, Race, ScheduleItem, SlipFile, Ticket, User, Zone
 
 OPEN_STATUSES = ("pending", "awaiting_payment", "rejected")  # ยังมีเวลาจำกัด (expires_at)
 HELD_STATUSES = OPEN_STATUSES + ("pending_review",)  # ยังกันที่นั่งไว้อยู่ แต่ยังไม่จ่าย
@@ -184,6 +184,18 @@ def update_checkout_info(db: Session, booking_id: int, buyer_name: str, buyer_ph
     return booking
 
 
+def get_slip_file(db: Session, booking: Booking) -> Optional[SlipFile]:
+    """รูปสลิปล่าสุดของการจอง (เฉพาะที่เก็บในฐานข้อมูล)"""
+    if not booking.slip_path or not booking.slip_path.startswith("db:"):
+        return None
+    try:
+        slip_id = int(booking.slip_path[3:])
+    except ValueError:
+        return None
+    slip = db.get(SlipFile, slip_id)
+    return slip if slip and slip.booking_id == booking.id else None
+
+
 def find_slip_duplicates(db: Session, slip_hash: str, exclude_booking_id: int) -> List[int]:
     statement = select(Booking.id).where(
         Booking.slip_hash == slip_hash, Booking.id != exclude_booking_id
@@ -207,14 +219,18 @@ def assert_can_attach_slip(db: Session, booking: Booking) -> None:
         raise BookingError("การจองนี้แนบสลิปไม่ได้ (อาจส่งสลิปไปแล้วหรือถูกยกเลิก)")
 
 
-def attach_slip(db: Session, booking_id: int, slip_path: str, slip_hash: str) -> Booking:
-    """บันทึกสลิป -> สถานะ pending_review (หยุดนับเวลา กันที่นั่งไว้จนแอดมินตัดสิน)"""
+def attach_slip(db: Session, booking_id: int, data: bytes, content_type: str, slip_hash: str) -> Booking:
+    """บันทึกรูปสลิปลงฐานข้อมูล -> สถานะ pending_review (หยุดนับเวลา กันที่นั่งไว้จนแอดมินตัดสิน)"""
     booking = _lock_booking(db, booking_id)
     if not booking:
         raise BookingError("ไม่พบการจองนี้", 404)
     assert_can_attach_slip(db, booking)
 
-    booking.slip_path = slip_path
+    slip = SlipFile(booking_id=booking.id, content_type=content_type, data=data)
+    db.add(slip)
+    db.flush()  # ให้ได้ slip.id ก่อน (บันทึกจริงพร้อมกันตอน commit ด้านล่าง)
+
+    booking.slip_path = f"db:{slip.id}"
     booking.slip_hash = slip_hash
     booking.slip_uploaded_at = utcnow()
     booking.slip_ref = None
@@ -403,6 +419,7 @@ def release_expired_bookings(db: Session) -> int:
 def reset_all_data(db: Session) -> None:
     """รีเซ็ตข้อมูลการจองทั้งหมดใน DB (ใช้ตอน Dev/Test)"""
     db.exec(delete(Ticket))
+    db.exec(delete(SlipFile))
     db.exec(delete(Booking))
     for z in db.exec(select(Zone)).all():
         z.available_seats = z.total_seats

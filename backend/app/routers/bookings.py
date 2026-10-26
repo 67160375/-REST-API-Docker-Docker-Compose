@@ -13,7 +13,6 @@ routers/bookings.py
 """
 
 import hashlib
-import uuid
 from typing import List
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
@@ -138,15 +137,10 @@ def upload_slip(
         raise HTTPException(status_code=400, detail="รองรับเฉพาะรูปภาพ JPG, PNG หรือ WEBP")
     ext, mime = detected
 
-    config.UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
-    filename = f"slip_{booking_id}_{uuid.uuid4().hex}.{ext}"
-    path = config.UPLOAD_DIR / filename
-    path.write_bytes(data)
-
+    filename = f"slip_{booking_id}.{ext}"
     try:
-        booking = crud.attach_slip(db, booking_id, filename, hashlib.sha256(data).hexdigest())
+        booking = crud.attach_slip(db, booking_id, data, mime, hashlib.sha256(data).hexdigest())
     except crud.BookingError as e:
-        path.unlink(missing_ok=True)
         _raise(e)
 
     # ตรวจสลิปอัตโนมัติ (ถ้าเปิดใช้) — ไม่ผ่าน/ล่ม = ปล่อยให้แอดมินตรวจตามปกติ

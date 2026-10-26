@@ -10,6 +10,7 @@ models.py
 
 from datetime import datetime
 from typing import List, Optional
+from sqlalchemy import Column, LargeBinary
 from sqlmodel import Field, Relationship, SQLModel
 
 
@@ -106,7 +107,7 @@ class Booking(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
     # ---- สลิปโอนเงิน ----
-    slip_path: Optional[str] = None  # ชื่อไฟล์ใน UPLOAD_DIR (ไม่เปิดเป็น public)
+    slip_path: Optional[str] = None  # "db:<id ใน slipfile>" (ระบบใหม่) หรือชื่อไฟล์ใน UPLOAD_DIR (ของเก่า)
     slip_hash: Optional[str] = Field(default=None, index=True)  # sha256 ของไฟล์ ใช้จับสลิปซ้ำ
     slip_uploaded_at: Optional[datetime] = None
     slip_ref: Optional[str] = Field(default=None, index=True)  # เลขอ้างอิงจาก API ตรวจสลิป (ถ้าใช้)
@@ -134,3 +135,13 @@ class Ticket(SQLModel, table=True):
     checked_in_by: Optional[int] = Field(default=None, foreign_key="user.id")
 
     booking: Optional[Booking] = Relationship(back_populates="ticket")
+
+
+class SlipFile(SQLModel, table=True):
+    """รูปสลิปโอนเงิน เก็บในฐานข้อมูล (ไม่หายตอน redeploy/restart บน Render แบบฟรี)"""
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    booking_id: int = Field(foreign_key="booking.id", index=True)
+    content_type: str
+    data: bytes = Field(sa_column=Column(LargeBinary, nullable=False))
+    created_at: datetime = Field(default_factory=datetime.utcnow)

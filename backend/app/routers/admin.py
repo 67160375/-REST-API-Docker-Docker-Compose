@@ -11,7 +11,7 @@ routers/admin.py — หลังบ้านสำหรับแอดมิ�
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from sqlmodel import Session
 
 from app import config, crud
@@ -88,12 +88,19 @@ def get_slip(booking_id: int, _admin: User = Depends(require_admin), db: Session
     booking = crud.get_booking(db, booking_id)
     if not booking or not booking.slip_path:
         raise HTTPException(status_code=404, detail="การจองนี้ยังไม่มีสลิป")
+    headers = {"Cache-Control": "private, no-store"}
+
+    # ระบบใหม่: รูปอยู่ในฐานข้อมูล
+    slip = crud.get_slip_file(db, booking)
+    if slip:
+        return Response(content=slip.data, media_type=slip.content_type, headers=headers)
+
+    # ของเก่า: รูปเป็นไฟล์ใน UPLOAD_DIR (อาจหายไปแล้วถ้าเครื่องถูกรีเซ็ต)
     path = (config.UPLOAD_DIR / booking.slip_path).resolve()
     if path.parent != config.UPLOAD_DIR.resolve() or not path.is_file():
-        raise HTTPException(status_code=404, detail="ไม่พบไฟล์สลิป")
+        raise HTTPException(status_code=404, detail="ไม่พบไฟล์สลิป (ไฟล์อาจหายไปตอนเซิร์ฟเวอร์รีสตาร์ท)")
     ext = path.suffix.lstrip(".").lower()
-    return FileResponse(path, media_type=_MIME.get(ext, "application/octet-stream"),
-                        headers={"Cache-Control": "private, no-store"})
+    return FileResponse(path, media_type=_MIME.get(ext, "application/octet-stream"), headers=headers)
 
 
 @router.post("/bookings/{booking_id}/approve", response_model=AdminBookingOut)

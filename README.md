@@ -184,6 +184,6 @@ FastAPI mount โฟลเดอร์ `frontend/` เป็น static files ใ
 ข้อควรระวังตอน deploy:
 - ไฟล์ `.env` ไม่ถูกส่งขึ้น GitHub ต้องตั้ง environment ในหน้า Render → Environment ให้ครบตาม `.env.example`
   (โดยเฉพาะ `SECRET_KEY`, `DATABASE_URL`, `PROMPTPAY_ID`, `PROMPTPAY_NAME`, `ADMIN_USERNAMES`)
-- รูปสลิปเก็บที่ `UPLOAD_DIR` (`/app/uploads`) ต้องผูก persistent disk/volume ไม่งั้นรูปหายตอน redeploy
+- รูปสลิปเก็บในฐานข้อมูล (ตาราง `slipfile`) จึงไม่หายตอน redeploy/restart แม้ใช้ Render แบบฟรี
 - ปิด/ลบ router `dev` (`/api/dev/reset`) ก่อนใช้งานจริง
 - หน้าสแกนตั๋วใช้กล้องได้เฉพาะเว็บที่เป็น https
